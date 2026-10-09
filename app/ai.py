@@ -6,8 +6,8 @@ Google Gemini via its OpenAI-compatible endpoint for:
   - powering agents (search, match, analysis)
 
 Free-tier model picks (Oct 2026):
-  compile (strict rule JSON) .... gemini-3.8-flash      (best free instruction-following)
-  brain (agent matching) ........ gemini-3.8-flash      (reasoning + analysis)
+  compile (strict rule JSON) .... gemini-3.6-flash      (best free instruction-following)
+  brain (agent matching) ........ gemini-3.6-flash      (reasoning + analysis)
   plan (view filter mapping) .... gemini-3.5-flash-lite (fastest, cheapest)
   suggest (chat hints) .......... gemini-3.5-flash-lite (tiny, high-frequency)
 
@@ -30,8 +30,8 @@ import urllib.error
 
 AI_KEY = os.environ.get("PLATFORM_AI_KEY", "")
 AI_MODELS = {
-    "compile": os.environ.get("PLATFORM_AI_MODEL_COMPILE", os.environ.get("PLATFORM_AI_MODEL", "gemini-3.8-flash")),
-    "brain": os.environ.get("PLATFORM_AI_MODEL_BRAIN", os.environ.get("PLATFORM_AI_MODEL", "gemini-3.8-flash")),
+    "compile": os.environ.get("PLATFORM_AI_MODEL_COMPILE", os.environ.get("PLATFORM_AI_MODEL", "gemini-3.5-flash-lite")),
+    "brain": os.environ.get("PLATFORM_AI_MODEL_BRAIN", os.environ.get("PLATFORM_AI_MODEL", "gemini-3.6-flash")),
     "plan": os.environ.get("PLATFORM_AI_MODEL_PLAN", os.environ.get("PLATFORM_AI_MODEL", "gemini-3.5-flash-lite")),
     "suggest": os.environ.get("PLATFORM_AI_MODEL_SUGGEST", os.environ.get("PLATFORM_AI_MODEL", "gemini-3.5-flash-lite")),
 }
@@ -98,6 +98,119 @@ def _chat(messages, role="compile", max_tokens=800, temperature=0.1, timeout=25)
     return None
 
 
+ALLOWED_OPS = {"==", "!=", ">", ">=", "<", "<=", "in", "contains", "exists"}
+ALLOWED_SOURCES = {"profile", "submission", "cross"}
+
+
+def _strip_fences(text):
+    t = (text or "").strip()
+    if t.startswith("```"):
+        lines = t.split("\n")
+        lines = [l for l in lines if not l.strip().startswith("```")]
+        t = "\n".join(lines).strip()
+    return t
+
+
+def _balanced_objects(text):
+    """Yield balanced {...} substrings (outermost first)."""
+    objs = []
+    depth = 0
+    start = -1
+    instr = False
+    esc = False
+    for i, ch in enumerate(text):
+        if instr:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                instr = False
+            continue
+        if ch == '"':
+            instr = True
+        elif ch == "{":
+            if depth == 0:
+                start = i
+            depth += 1
+        elif ch == "}":
+            if depth > 0:
+                depth -= 1
+                if depth == 0 and start >= 0:
+                    objs.append(text[start:i + 1])
+                    start = -1
+    return objs
+
+
+def extract_json(text, want_key=None):
+    """Find the first JSON object (or array) that parses and has want_key."""
+    t = _strip_fences(text)
+    cands = _balanced_objects(t)
+    # also try arrays for brain responses
+    if want_key == "[":
+        depth = 0
+        start = -1
+        for i, ch in enumerate(t):
+            if ch == "[":
+                if depth == 0:
+                    start = i
+                depth += 1
+            elif ch == "]":
+                if depth > 0:
+                    depth -= 1
+                    if depth == 0 and start >= 0:
+                        cands.append(t[start:i + 1])
+        for c in cands:
+            try:
+                v = json.loads(c)
+                if isinstance(v, list):
+                    return v
+            except Exception:
+                continue
+        return None
+    for c in cands:
+        try:
+            v = json.loads(c)
+        except Exception:
+            continue
+        if isinstance(v, dict) and (want_key is None or want_key in v):
+            return v
+    return None
+
+
+def clean_checks(raw):
+    """Strict-shape the checks list; returns (checks, dropped)."""
+    checks, dropped = [], 0
+    if not isinstance(raw, list):
+        return [], 1
+    for c in raw:
+        if not isinstance(c, dict):
+            dropped += 1
+            continue
+        field, op, src = c.get("field"), c.get("op"), c.get("source", "profile")
+        if not isinstance(field, str) or not field.strip():
+            dropped += 1
+            continue
+        if op not in ALLOWED_OPS:
+            dropped += 1
+            continue
+        if src not in ALLOWED_SOURCES:
+            src = "profile"
+        val = c.get("value")
+        fld = field.strip().lower()
+        if fld == "verification" and val is True:
+            op, val = "in", ["Verified", "active"]
+        if fld in ("rating", "value", "stake_balance") and isinstance(val, str):
+            try:
+                val = float(val)
+            except ValueError:
+                pass
+        checks.append({"field": field.strip()[:60], "op": op, "value": val,
+                       "source": src,
+                       "description": str(c.get("description") or f"{field} {op} {val}")[:160]})
+    return checks, dropped
+
+
 def ai_compile_rule(natural_language, schema_context=""):
     """Ask the LLM to compile NL -> deterministic checks JSON.
 
@@ -116,23 +229,27 @@ def ai_compile_rule(natural_language, schema_context=""):
         "Set needs_review=true if the text is ambiguous."
     )
     user = f"Rule: {natural_language}\nSchema context: {schema_context[:1500]}"
-    text = _chat(
-        [{"role": "system", "content": system}, {"role": "user", "content": user}],
-        "compile", max_tokens=600, temperature=0.0,
-    )
-    if text:
-        try:
-            start, end = text.find("{"), text.rfind("}")
-            compiled = json.loads(text[start:end + 1])
-            if isinstance(compiled.get("checks"), list):
-                expl = "; ".join(
-                    c.get("description", f"{c.get('field')} {c.get('op')} {c.get('value')}")
-                    for c in compiled["checks"]
-                ) or natural_language
-                return {"checks": compiled["checks"], "needs_review": bool(compiled.get("needs_review", False))}, expl, AI_MODELS["compile"]
-        except Exception as e:
-            global _last_error
-            _last_error = f"parse: {e}"
+    for attempt in ("Return ONLY the JSON object, no other text.",
+                    "Your last reply was not valid JSON. Reply with NOTHING but the JSON object."):
+        text = _chat(
+            [{"role": "system", "content": system},
+             {"role": "user", "content": user + "\n" + attempt}],
+            "compile", max_tokens=600, temperature=0.0,
+        )
+        if not text:
+            break
+        compiled = extract_json(text, "checks")
+        if compiled:
+            checks, dropped = clean_checks(compiled.get("checks"))
+            if checks:
+                expl = "; ".join(c["description"] for c in checks)
+                if dropped:
+                    expl += f" ({dropped} invalid check(s) dropped)"
+                return ({"checks": checks,
+                         "needs_review": bool(compiled.get("needs_review", False)) or dropped > 0},
+                        expl, AI_MODELS["compile"])
+    global _last_error
+    _last_error = "gemini returned no valid checks; used local fallback"
     compiled, expl = local_compile(natural_language)
     return compiled, expl + " (local fallback)", "local-deterministic"
 
@@ -150,11 +267,9 @@ def ai_plan_view(natural_language, tables_snapshot):
         "plan", max_tokens=400, temperature=0.0,
     )
     if text:
-        try:
-            start, end = text.find("{"), text.rfind("}")
-            return json.loads(text[start:end + 1]), AI_MODELS["plan"]
-        except Exception:
-            pass
+        planned = extract_json(text, "filter")
+        if planned:
+            return planned, AI_MODELS["plan"]
     return None, "local"
 
 
@@ -175,14 +290,89 @@ def ai_agent_brain(kind, profile, context=""):
         "brain", max_tokens=700, temperature=0.4,
     )
     if text:
-        try:
-            start, end = text.find("["), text.rfind("]")
-            items = json.loads(text[start:end + 1])
-            if isinstance(items, list) and items:
-                return items[:5], AI_MODELS["brain"]
-        except Exception:
-            pass
+        items = extract_json(text, "[")
+        if isinstance(items, list):
+            items = [i for i in items
+                     if isinstance(i, dict) and isinstance(i.get("title"), str)][:5]
+            if items:
+                return items, AI_MODELS["brain"]
     return [], "local"
+
+
+def ai_ask_plan(question, tables_spec):
+    """Turn 'total value of open packages' into {table_key, op, column, filter}.
+
+    tables_spec: [{key, columns: [{name, type, options}]}].
+    Tries Gemini, validates strictly, else deterministic local parse.
+    Returns (plan_dict|None, model_used).
+    """
+    system = (
+        "You turn a question about table records into a computation plan. "
+        'Respond with ONLY JSON: {"table_key":string (which table),'
+        '"op":one of count|sum|avg|min|max|list,'
+        '"column":string (numeric column for sum|avg|min|max, else empty),'
+        '"filter":object like {"status":"open"} or {} (equality filters only)}. '
+        "Use exact table keys and column names from the context."
+    )
+    text = _chat(
+        [{"role": "system", "content": system},
+         {"role": "user", "content": "Tables: %s\nQuestion: %s" % (
+             json.dumps(tables_spec)[:1500], (question or "")[:400])}],
+        "plan", max_tokens=300, temperature=0.0,
+    )
+    if text:
+        plan = extract_json(text, "op")
+        if isinstance(plan, dict) and _valid_ask_plan(plan, tables_spec):
+            return plan, AI_MODELS["plan"]
+    return _local_ask_plan(question, tables_spec), "local-deterministic"
+
+
+def _valid_ask_plan(plan, tables_spec):
+    if not isinstance(plan, dict):
+        return False
+    keys = {t["key"] for t in tables_spec}
+    if plan.get("table_key") not in keys:
+        return False
+    if plan.get("op") not in ("count", "sum", "avg", "min", "max", "list"):
+        return False
+    cols = {c["name"] for t in tables_spec if t["key"] == plan.get("table_key") for c in t.get("columns", [])}
+    if plan.get("op") in ("sum", "avg", "min", "max") and plan.get("column") not in cols:
+        return False
+    filt = plan.get("filter") or {}
+    if not isinstance(filt, dict):
+        return False
+    return all(k in cols and not isinstance(v, (dict, list)) for k, v in filt.items())
+
+
+def _local_ask_plan(question, tables_spec):
+    q = (question or "").lower()
+    table = tables_spec[0]["key"] if tables_spec else ""
+    for t in tables_spec:
+        stem = t["key"].split("_")[0]
+        if stem and stem in q:
+            table = t["key"]
+            break
+    cols = [c for t in tables_spec if t["key"] == table for c in t.get("columns", [])]
+    numeric = [c["name"] for c in cols if c.get("type") == "number"]
+    money = [n for n in numeric if re.search(r"(amount|value|price|fee|cost|total|balance|stake)", n, re.I)]
+    op, col = "list", ""
+    if re.search(r"\b(total|sum|add up|combined)\b", q) and (money or numeric):
+        op, col = "sum", (money or numeric)[0]
+    elif re.search(r"\b(averag|avg|mean)\b", q) and (money or numeric):
+        op, col = "avg", (money or numeric)[0]
+    elif re.search(r"\bhow many|count|number of\b", q):
+        op = "count"
+    elif re.search(r"\b(cheapest|lowest|min|minimum)\b", q) and (money or numeric):
+        op, col = "min", (money or numeric)[0]
+    elif re.search(r"\b(most|highest|largest|biggest|expensive|max)\b", q) and (money or numeric):
+        op, col = "max", (money or numeric)[0]
+    filt = {}
+    for c in cols:
+        for opt in (c.get("options") or []):
+            if isinstance(opt, str) and opt and opt.lower() in q:
+                filt[c["name"]] = opt
+                break
+    return {"table_key": table, "op": op, "column": col, "filter": filt}
 
 
 def web_search(query, count=5):
@@ -228,11 +418,7 @@ def ai_chat_structured_suggest(message_text, schema_snapshot=""):
         "suggest", max_tokens=300, temperature=0.0,
     )
     if text:
-        try:
-            start, end = text.find("{"), text.rfind("}")
-            return json.loads(text[start:end + 1])
-        except Exception:
-            return {}
+        return extract_json(text, "table_key") or {}
     return {}
 
 
@@ -241,7 +427,7 @@ GENERATE_SCHEMAS = {
     "form": "Respond with ONLY JSON: {\"title\":string(required,<=120 chars),\"description\":string,\"table_key\":string(which existing table key this writes to, from context, or empty for none), fields:[{\"name\":string snake_case,\"label\":string,\"type\":one of text|number|select,\"required\":bool,\"options\":[string] for select}],\"allow_multiple\":bool}. Turn each requested question into a field; max 8 fields.",
     "schedule": "Respond with ONLY JSON: {\"name\":string(required),\"kind\":one of once|interval|daily|weekly|cron,\"time_of_day\":string HH:MM for daily|weekly,\"interval_seconds\":int for interval,\"cron_expr\":string for cron,\"action\":one of inspect|match|follow_up|report|motivate|push_inbox|create_task|run_agent,\"note\":string}. Default kind daily 09:00 action report unless the request says otherwise.",
     "redirect": "Respond with ONLY JSON: {\"name\":string(required),\"trigger_event\":one of offer.accepted|task.accepted|task.completed|form.submitted|status.confirmed|schedule.fired|member.joined,\"action\":one of push_inbox|push_public|create_task|write_record|run_agent,\"message\":string(the text of the next step)}. Map accept/complete/submit/confirm/time/join words to the closest trigger.",
-    "table": "Respond with ONLY JSON: {\"name\":string(required, a short plural noun like Shipments, max 60 chars -- NEVER the whole request),\"description\":string,\"columns\":[{\"name\":string snake_case,\"label\":string,\"type\":one of text|number|select}%(max 8 columns)].",
+    "table": "Respond with ONLY JSON: {\"name\":string(required, a short plural noun like Shipments, max 60 chars -- NEVER the whole request),\"description\":string,\"columns\":[{\"name\":string snake_case,\"label\":string,\"type\":one of text|number|select}(max 8 columns)].",
 }
 
 GENERATE_ROLES = {"task": "compile", "form": "compile", "schedule": "plan", "redirect": "plan", "table": "plan"}
@@ -349,11 +535,9 @@ def ai_propose(kind, prompt, snapshot="", ctx=None):
         GENERATE_ROLES[kind], max_tokens=600, temperature=0.2,
     )
     if text:
-        try:
-            spec = json.loads(text[text.find("{"):text.rfind("}") + 1])
-            if isinstance(spec, dict) and spec:
-                return spec, AI_MODELS[GENERATE_ROLES[kind]], []
-        except Exception as e:
-            return local_propose(kind, prompt, ctx)[0], "local-fallback", ["gemini parse issue: %s" % e]
+        spec = extract_json(text)
+        if isinstance(spec, dict) and spec:
+            return spec, AI_MODELS[GENERATE_ROLES[kind]], []
+        return local_propose(kind, prompt, ctx)[0], "local-fallback", ["gemini returned no usable spec"]
     spec, _ = local_propose(kind, prompt, ctx)
     return spec, "local-deterministic", []

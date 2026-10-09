@@ -29,17 +29,20 @@ a group or join one with an invite code (`/?join=CODE` links work too).
   run agents and read every shared dashboard.
 
 Config: AI is **Gemini only** via Google's OpenAI-compatible endpoint. Set
-`PLATFORM_AI_KEY` to a Gemini API key (Google AI Studio, free tier). Free
-models per feature: rule compilation + agent brains → `gemini-3.8-flash`;
-view planning + chat hints → `gemini-3.5-flash-lite`. Override with
-`PLATFORM_AI_MODEL` (all) or `PLATFORM_AI_MODEL_COMPILE/_BRAIN/_PLAN/_SUGGEST`.
-With no key the app uses the deterministic local fallback — the Rules badge
-and `/api/ai-status` show which is active.
+`PLATFORM_AI_KEY` to a Gemini API key (Google AI Studio, free tier) and it
+just works — verified live: rule compilation, view planning, record Q&A and
+AI drafting all answer. Working free models: `gemini-3.5-flash-lite` for
+compile/plan/suggest (reliable JSON), `gemini-3.6-flash` for agent brains.
+Override with `PLATFORM_AI_MODEL` or per-role `PLATFORM_AI_MODEL_<COMPILE|
+BRAIN|PLAN|SUGGEST>`. Every call validates the model's output shape strictly
+(fences stripped, balanced-JSON extraction, op allowlists, value
+normalization) with one retry, then falls back to deterministic local logic —
+the UI badge and `/api/ai-status` always show which engine answered.
 
 ## What lives where
 
 - `app/main.py` — all REST endpoints + serves `/`
-- `app/models.py` — single-hub schema (memberships hub, ≤5 tables/group)
+- `app/models.py` — single-hub schema (memberships hub, ≤15 tables/group)
 - `app/rules.py` — NL → deterministic checks + evaluator
 - `app/ai.py` — LLM compilation / view planning / agent brains / web search
 - `app/agents_logic.py` — Query → Act → Return → Mutate
@@ -52,7 +55,7 @@ and `/api/ai-status` show which is active.
 1. **Chat** — send a message; try `/query verified drivers`, `/task Night patrol`,
    `/form Package intake`, `/agent find matches`, `/schedule daily 09:00 report`.
 2. **Data** — switch tables (Members/Vehicles/Dispatches/Documents/Payments).
-   Creating a 6th table is rejected (five-table cap).
+   Creating a 16th table is rejected (fifteen-table cap).
 3. **Tasks** — open Tasks → Offers → *Accept as me*. Ineligible members are
    blocked live (e.g. rating/stake rules). Responding fires flows.
 4. **Forms** — Fill *List a package* with value `50000` as low-stake Emeka Obi →
@@ -113,7 +116,7 @@ Every builder has an ✨ AI draft button (tasks, forms, schedules, flows,
 tables — manual creation stays). Prompt → structured spec preview (with the
 model named, or local-fallback badge) → confirm → created and announced in
 chat. Specs are validated strictly on apply: unknown actions, triggers,
-types, cross-group ids and the five-table cap are all rejected.
+types, cross-group ids and the fifteen-table cap are all rejected.
 
 ## Paced catch-up (phased messages)
 
@@ -132,6 +135,12 @@ lives in Crowd Lagos with an ON/OFF banner in Schedules.
   *Post an existing task/form*, Share buttons on every card.
 - Every task/form card names the member who initiated it — Platform only speaks
   for genuinely automated output (schedules, status reports).
+- Everything is editable: tables (rename), records (edit values), tasks,
+  forms, views, schedules, flows, agents — plus deletes throughout
+  (admins; records also by their author). Cap raised to **15 tables/group**.
+- **Ask the records**: Data tab ∑ button or `/ask` in chat — "total value of
+  open packages", "average rating of couriers" — answered with live
+  computations, planned by Gemini, executed deterministically.
 
 ## Hackathon Crew
 

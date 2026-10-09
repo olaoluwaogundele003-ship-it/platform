@@ -332,8 +332,8 @@ def list_tables(gid: int, user: models.User = Depends(get_current_user), db: Ses
 def create_table(gid: int, body: dict, user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
     require_admin(gid, user, db)
     count = db.query(models.TableDef).filter_by(group_id=gid).count()
-    if count >= 5:
-        raise HTTPException(400, "Five-table cap reached.")
+    if count >= 15:
+        raise HTTPException(400, "Fifteen-table cap reached — Platform keeps every group readable in one pass.")
     if not (body.get("name") or "").strip():
         raise HTTPException(400, "name required")
     key = (body.get("key") or body["name"].lower().replace(" ", "_"))[:64]
@@ -416,6 +416,34 @@ def delete_record(rid: int, user: models.User = Depends(get_current_user), db: S
     db.delete(r)
     db.commit()
     return {"ok": True}
+
+
+@app.patch("/api/records/{rid}")
+def patch_record(rid: int, body: dict, user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    r = db.query(models.Record).filter_by(id=rid).first()
+    if not r:
+        raise HTTPException(404, "record not found")
+    me = me_in(db, r.group_id, user)
+    if me.role != "admin" and r.created_by_member_id != me.id:
+        raise HTTPException(403, "only the author or an admin can edit this")
+    if isinstance(body.get("data"), dict):
+        r.data = {**(r.data or {}), **body["data"]}
+    db.commit()
+    return {"id": r.id, "data": r.data}
+
+
+@app.patch("/api/tables/{tid}")
+def patch_table(tid: int, body: dict, user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    t = db.query(models.TableDef).filter_by(id=tid).first()
+    if not t:
+        raise HTTPException(404, "table not found")
+    require_admin(t.group_id, user, db)
+    if body.get("name"):
+        t.name = str(body["name"]).strip()[:120]
+    if "description" in body:
+        t.description = str(body.get("description") or "")[:500]
+    db.commit()
+    return {"id": t.id, "name": t.name}
 
 
 # ---------- rules ----------
@@ -767,6 +795,44 @@ def post_chat(gid: int, body: dict, user: models.User = Depends(get_current_user
                      member_id=member.id, payload={"agent_run_id": run.id, "agent": agent.name})
         db.commit()
         return {"slash": "agent", "agent_run_id": run.id, "items": run.result_items}
+    if text.startswith("/ask "):
+        q = (text[6:].strip() or "show me everything")
+        tables = db.query(models.TableDef).filter_by(group_id=gid).all()
+        from app.ai import ai_ask_plan
+        from app.rules import _compare as _cmp
+        spec = [{"key": t.key, "columns": [{"name": c.get("name", ""), "type": c.get("type", "text"),
+                                            "options": c.get("options", [])} for c in (t.columns or [])]}
+                for t in tables]
+        plan, model = ai_ask_plan(q, spec)
+        table = next((t for t in tables if t.key == (plan.get("table_key") if plan else "")), None) or (tables[0] if tables else None)
+        op = (plan.get("op") if plan else "list") or "list"
+        col = (plan.get("column") if plan else "") or ""
+        filt = (plan.get("filter") if plan else {}) or {}
+        rows = []
+        if table:
+            for r in db.query(models.Record).filter_by(table_id=table.id).all():
+                d = r.data or {}
+                if all(_cmp(d.get(k), "==", v) for k, v in filt.items()):
+                    rows.append(d)
+        nums = [float(x[col]) for x in rows if isinstance(x.get(col), (int, float))]
+        fname = " · ".join(f"{k}={v}" for k, v in filt.items())
+        if op == "count":
+            answer = f"{len(rows)} record(s)" + (f" where {fname}" if fname else "") + "."
+        elif op in ("sum", "avg", "min", "max") and nums:
+            val = {"sum": sum(nums), "avg": sum(nums) / len(nums), "min": min(nums), "max": max(nums)}[op]
+            word = {"sum": "Total", "avg": "Average", "min": "Lowest", "max": "Highest"}[op]
+            val_s = f"{val:,.2f}".rstrip("0").rstrip(".")
+            answer = f"{word} {col} across {len(rows)} record(s): {val_s}" + (f" (where {fname})" if fname else "") + "."
+        else:
+            op = "list" if op not in ("count",) else op
+            answer = f"{len(rows)} matching record(s)" + (f" where {fname}" if fname else "") + "."
+        sample = [{k: v for k, v in r.items() if not k.startswith("_")} for r in rows[:5]]
+        post_message(db, gid, text, kind="chat", author=author, member_id=member.id)
+        post_message(db, gid, answer, kind="query", author="Platform",
+                     payload={"answer": answer, "rows": sample, "op": op,
+                              "table": table.key if table else "", "model": model})
+        db.commit()
+        return {"slash": "ask", "answer": answer}
     if text.startswith("/schedule "):
         s = models.Schedule(group_id=gid, name=text[10:60], description="Created from chat.",
                             kind="daily", time_of_day="09:00", action="report",
@@ -849,6 +915,53 @@ def toggle_reaction(mid: int, body: dict, user: models.User = Depends(get_curren
     db.add(models.MessageReaction(message_id=mid, group_id=src.group_id, member_id=member.id, emoji=emoji))
     db.commit()
     return {"toggled": "added", "emoji": emoji}
+
+
+@app.post("/api/groups/{gid}/ask")
+def ask_records(gid: int, body: dict, user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Chat with records: NL question -> answered with real aggregations."""
+    from app.ai import ai_ask_plan
+    from app.rules import _compare
+    member = me_in(db, gid, user)
+    question = (body.get("question") or "").strip()
+    if not question:
+        raise HTTPException(400, "question required")
+    tables = db.query(models.TableDef).filter_by(group_id=gid).all()
+    if not tables:
+        raise HTTPException(400, "no tables in this group yet")
+    spec = [{"key": t.key, "columns": [{"name": c.get("name", ""), "type": c.get("type", "text"),
+                                        "options": c.get("options", [])} for c in (t.columns or [])]}
+            for t in tables]
+    plan, model = ai_ask_plan(question, spec)
+    table = next((t for t in tables if t.key == (plan.get("table_key") if plan else "")), None) or tables[0]
+    op = (plan.get("op") if plan else "list") or "list"
+    col = (plan.get("column") if plan else "") or ""
+    filt = (plan.get("filter") if plan else {}) or {}
+    rows = []
+    for r in db.query(models.Record).filter_by(table_id=table.id).all():
+        d = r.data or {}
+        if all(_compare(d.get(k), "==", v) for k, v in filt.items()):
+            rows.append(d)
+    nums = [float(x[col]) for x in rows if isinstance(x.get(col), (int, float))]
+    fname = " · ".join(f"{k}={v}" for k, v in filt.items())
+    if op == "count":
+        answer = f"{len(rows)} record(s) in {table.name}" + (f" where {fname}" if fname else "") + "."
+    elif op in ("sum", "avg", "min", "max") and nums:
+        val = {"sum": sum(nums), "avg": sum(nums) / len(nums), "min": min(nums), "max": max(nums)}[op]
+        word = {"sum": "Total", "avg": "Average", "min": "Lowest", "max": "Highest"}[op]
+        val_s = f"{val:,.2f}".rstrip("0").rstrip(".")
+        answer = f"{word} {col} across {len(rows)} record(s): {val_s}" + (f" (where {fname})" if fname else "") + "."
+    elif op in ("sum", "avg", "min", "max"):
+        answer = f"No numbers in {col or 'that column'} to compute — showing {len(rows)} matching record(s)."
+        op = "list"
+    else:
+        answer = f"{len(rows)} matching record(s) in {table.name}" + (f" where {fname}" if fname else "") + "."
+    sample = [{k: v for k, v in r.items() if not k.startswith("_")} for r in rows[:5]]
+    post_message(db, gid, question, kind="chat", author=member.display_name, member_id=member.id)
+    post_message(db, gid, answer, kind="query", author="Platform",
+                 payload={"answer": answer, "rows": sample, "op": op, "table": table.key, "model": model})
+    db.commit()
+    return {"answer": answer, "rows": sample, "op": op, "model": model}
 
 
 @app.post("/api/messages/{mid}/forward")
@@ -1213,8 +1326,8 @@ def ai_apply_endpoint(gid: int, body: dict, user: models.User = Depends(get_curr
         db.commit()
         return {"id": r.id}
     # table
-    if db.query(models.TableDef).filter_by(group_id=gid).count() >= 5:
-        raise HTTPException(400, "Five-table cap reached.")
+    if db.query(models.TableDef).filter_by(group_id=gid).count() >= 15:
+        raise HTTPException(400, "Fifteen-table cap reached.")
     if not title:
         raise HTTPException(400, "spec needs a name")
     cols = []
@@ -1237,6 +1350,127 @@ def ai_apply_endpoint(gid: int, body: dict, user: models.User = Depends(get_curr
 
 
 # ---------- redirects / workflows ----------
+@app.delete("/api/tasks/{tid}")
+def delete_task(tid: int, user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    t = db.query(models.TaskDef).filter_by(id=tid).first()
+    if not t:
+        raise HTTPException(404, "task not found")
+    require_admin(t.group_id, user, db)
+    db.query(models.TaskOffer).filter_by(task_id=tid).delete()
+    db.delete(t)
+    db.commit()
+    return {"ok": True}
+
+
+@app.patch("/api/tasks/{tid}")
+def patch_task(tid: int, body: dict, user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    t = db.query(models.TaskDef).filter_by(id=tid).first()
+    if not t:
+        raise HTTPException(404, "task not found")
+    require_admin(t.group_id, user, db)
+    for k in ("title", "description", "payout_text"):
+        if body.get(k) is not None:
+            setattr(t, k, str(body[k])[:500 if k != "title" else 200])
+    if body.get("status") in ("live", "draft", "closed"):
+        t.status = body["status"]
+    if isinstance(body.get("audience"), dict):
+        t.audience = body["audience"]
+    db.commit()
+    return {"id": t.id, "title": t.title, "status": t.status}
+
+
+@app.delete("/api/forms/{fid}")
+def delete_form(fid: int, user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    f = db.query(models.FormDef).filter_by(id=fid).first()
+    if not f:
+        raise HTTPException(404, "form not found")
+    require_admin(f.group_id, user, db)
+    db.query(models.FormSubmission).filter_by(form_id=fid).delete()
+    db.delete(f)
+    db.commit()
+    return {"ok": True}
+
+
+@app.patch("/api/forms/{fid}")
+def patch_form(fid: int, body: dict, user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    f = db.query(models.FormDef).filter_by(id=fid).first()
+    if not f:
+        raise HTTPException(404, "form not found")
+    require_admin(f.group_id, user, db)
+    if body.get("title"):
+        f.title = str(body["title"]).strip()[:160]
+    if "description" in body:
+        f.description = str(body.get("description") or "")[:500]
+    if "allow_multiple" in body:
+        f.allow_multiple = bool(body["allow_multiple"])
+    if isinstance(body.get("fields"), list) and body["fields"]:
+        f.fields = body["fields"][:12]
+    db.commit()
+    return {"id": f.id, "title": f.title}
+
+
+@app.delete("/api/views/{vid}")
+def delete_view(vid: int, user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    v = db.query(models.PageView).filter_by(id=vid).first()
+    if not v:
+        raise HTTPException(404, "view not found")
+    require_admin(v.group_id, user, db)
+    db.query(models.ViewSnapshot).filter_by(view_id=vid).delete()
+    db.delete(v)
+    db.commit()
+    return {"ok": True}
+
+
+@app.patch("/api/views/{vid}")
+def patch_view(vid: int, body: dict, user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    v = db.query(models.PageView).filter_by(id=vid).first()
+    if not v:
+        raise HTTPException(404, "view not found")
+    require_admin(v.group_id, user, db)
+    if body.get("title"):
+        v.title = str(body["title"]).strip()[:160]
+    if "description" in body:
+        v.description = str(body.get("description") or "")[:500]
+    if isinstance(body.get("columns"), list):
+        v.columns = body["columns"][:12]
+    if isinstance(body.get("filter"), dict):
+        v.filter = body["filter"]
+    db.commit()
+    return {"id": v.id, "title": v.title}
+
+
+@app.delete("/api/schedules/{sid}")
+def delete_schedule(sid: int, user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    s = db.query(models.Schedule).filter_by(id=sid).first()
+    if not s:
+        raise HTTPException(404, "not found")
+    require_admin(s.group_id, user, db)
+    db.query(models.ScheduleRun).filter_by(schedule_id=sid).delete()
+    db.delete(s)
+    db.commit()
+    return {"ok": True}
+
+
+@app.delete("/api/redirects/{rid}")
+def delete_redirect(rid: int, user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    r = db.query(models.Redirect).filter_by(id=rid).first()
+    if not r:
+        raise HTTPException(404, "not found")
+    require_admin(r.group_id, user, db)
+    db.delete(r)
+    db.commit()
+    return {"ok": True}
+
+
+@app.delete("/api/agents/{aid}")
+def delete_agent(aid: int, user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    a = db.query(models.AgentDef).filter_by(id=aid).first()
+    if not a:
+        raise HTTPException(404, "not found")
+    require_admin(a.group_id, user, db)
+    db.delete(a)
+    db.commit()
+    return {"ok": True}
 @app.get("/api/groups/{gid}/redirects")
 def list_redirects(gid: int, user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
     me_in(db, gid, user)

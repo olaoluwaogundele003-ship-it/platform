@@ -1600,6 +1600,10 @@
             <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
             <span>Search table</span>
           </button>
+          <button class="grid-tool add" id="askRecordsBtn">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18"/></svg>
+            <span>Ask records ∑</span>
+          </button>
         </div>
 
         <!-- Table Content Grid -->
@@ -2713,6 +2717,7 @@ function msgNode(m){
   if (m.payload?.forwarded_from) extra += `<span class="fwd-label">Forwarded from ${esc(m.payload.forwarded_from.author||'another group')}</span>`;
   if ((m.kind==='task'||m.kind==='form'||m.kind==='agent'||m.kind==='view')&&m.payload) extra += chatCard(m);
   if (m.kind==='query'&&m.payload?.count!=null) extra += `<div class="query"><div class="query-line">filter ${esc(JSON.stringify(m.payload.filter||{}))}</div><div class="query-results"><div><strong>${m.payload.count}</strong><span>match</span></div><div><strong>${m.payload.avg_rating??'—'}</strong><span>avg</span></div></div></div>`;
+  if (m.payload?.answer) extra += `<div class="gentle-card"><div class="card-main"><div class="card-icon">∑</div><div class="card-copy"><div class="card-label">Records · computed live${m.payload.model?' · '+esc(m.payload.model):''}</div><h3>${esc(m.payload.answer)}</h3>${(m.payload.rows||[]).length?`<div style="overflow-x:auto;margin-top:6px"><table class="sheet"><thead><tr>${Object.keys(m.payload.rows[0]).map(k=>`<th>${esc(k)}</th>`).join('')}</tr></thead><tbody>${m.payload.rows.map(r=>`<tr>${Object.values(r).map(v=>`<td>${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`:''}</div></div></div>`;
   if (m.payload?.suggested_table) extra += `<div class="system" style="margin:8px 0 0">Structured as → ${esc(m.payload.suggested_table)}</div>`;
   d.innerHTML = `<div class="avatar">${esc((m.author||'P').slice(0,2).toUpperCase())}</div>
     <div class="message-content"><div class="message-meta"><strong>${esc(m.author)}</strong><span>${esc((m.at||'').slice(11,16))}</span>${m._pending?'<span>· sending…</span>':''}${m._failed?'<span style="color:#b3261e">· failed — click to retry</span>':''}</div>
@@ -2976,7 +2981,7 @@ $('attachBtn').addEventListener('click',()=>{
 });
 
 /* slash autocomplete */
-const SLASHES = [['/task','post a tappable task'],['/form','create a form'],['/query','ask the group data'],['/agent','run an agent'],['/schedule','create a schedule']];
+const SLASHES = [['/task','post a tappable task'],['/form','create a form'],['/query','ask the group data'],['/ask','ask the records (sums, stats)'],['/agent','run an agent'],['/schedule','create a schedule']];
 let slashOpen = false, slashSel = 0;
 function slashHint(v){
   const pop = $('slashPop'); if (!pop) return;
@@ -3005,7 +3010,7 @@ async function loadTables(){
 }
 function renderDataTabs(){
   $('dataTabs').innerHTML = state.tablesFull.map(t=>`<button class="table-tab ${state.activeTable&&t.id===state.activeTable.id?'active':''}" data-t="${t.id}">${esc(t.name)} · ${t.rows}</button>`).join('')
-    + (state.tablesFull.length<5 && state.myRole==='admin' ? `<button class="table-tab" id="addTableBtn" style="color:var(--brand)">+ table</button>` : `<span style="font-size:11px;color:var(--muted);padding:8px">${state.tablesFull.length}/5 tables</span>`);
+    + (state.tablesFull.length<15 && state.myRole==='admin' ? `<button class="table-tab" id="addTableBtn" style="color:var(--brand)">+ table</button>` : `<span style="font-size:11px;color:var(--muted);padding:8px">${state.tablesFull.length}/15 tables</span>`);
   document.querySelectorAll('#dataTabs [data-t]').forEach(b=>b.addEventListener('click',async()=>{ state.activeTable=state.tablesFull.find(x=>x.id==b.dataset.t); renderDataTabs(); await loadActiveTable(); }));
   const ab = $('addTableBtn'); if (ab) ab.onclick = async()=>{
     const v = await ask('New table', [{label:'Name', hint:'e.g. Sessions'}], 'Create');
@@ -3019,6 +3024,14 @@ $('tableSearchBtn').onclick = async ()=>{
   const v = await ask('Search table', [{label:'Filter rows', hint:'type to filter…', value:tableSearch}], 'Filter');
   if (v){ tableSearch = v[0].toLowerCase(); loadActiveTable(); }
 };
+$('askRecordsBtn').onclick = async ()=>{
+  const v = await ask('Ask the records', [{label:'Question',type:'textarea',hint:'e.g. Total value of open packages'}], 'Ask ∑');
+  if (!v || !v[0]) return;
+  try {
+    const r = await api(`/api/groups/${state.groupId}/ask`,{method:'POST',body:JSON.stringify({question:v[0]})});
+    toast(r.answer.slice(0,120)); showView('chat'); await loadMessages(true);
+  } catch(e){ toast(e.message); }
+};
 $('filterBtn').onclick = ()=>{ tableSearch=''; loadActiveTable(); toast('Filter cleared'); };
 async function loadActiveTable(){ await loadActiveTableInto(); }
 async function loadActiveTableInto(){
@@ -3029,15 +3042,32 @@ async function loadActiveTableInto(){
   const rows = d.rows.filter(r=>!tableSearch || JSON.stringify(r.data).toLowerCase().includes(tableSearch) || (r.member||'').toLowerCase().includes(tableSearch));
   const canDel = state.myRole==='admin';
   $('mainTable').querySelector('thead tr').innerHTML = `<th class="rownum">#</th>`+cols.map(c=>`<th>${esc(c.label||c.name)}</th>`).join('')+`<th>Member</th>${canDel?'<th></th>':''}`;
-  $('tableBody').innerHTML = rows.map((r,i)=>`<tr><td class="rownum">${i+1}</td>`+cols.map(c=>`<td>${esc(r.data?.[c.name]??'')}</td>`).join('')+`<td>${esc(r.member)}</td>${canDel?`<td><button onclick="delRecord(${r.id})" style="color:var(--muted)">×</button></td>`:''}</tr>`).join('')
+  $('tableBody').innerHTML = rows.map((r,i)=>`<tr><td class="rownum">${i+1}</td>`+cols.map(c=>`<td>${esc(r.data?.[c.name]??'')}</td>`).join('')+`<td>${esc(r.member)}</td>${canDel?`<td style="white-space:nowrap"><button onclick="editRecord(${r.id})" title="Edit" style="color:var(--muted)">✎</button> <button onclick="delRecord(${r.id})" title="Delete" style="color:var(--muted)">×</button></td>`:''}</tr>`).join('')
     || `<tr><td colspan="12"><div class="empty-state">No rows yet — submit a form or let an agent write here.</div></td></tr>`;
-  document.querySelector('.schema-bar').innerHTML = `<strong>${esc(d.table.name)} · ${d.rows.length} rows.</strong>&nbsp;Every row links to the members hub.${canDel?` <button id="delTableBtn" style="margin-left:auto;color:#b3261e">Delete table</button>`:''}`;
+  document.querySelector('.schema-bar').innerHTML = `<strong>${esc(d.table.name)} · ${d.rows.length} rows.</strong>&nbsp;Every row links to the members hub.${canDel?` <span style="margin-left:auto;display:flex;gap:6px"><button id="renTableBtn" style="color:var(--brand)">Rename</button><button id="delTableBtn" style="color:#b3261e">Delete table</button></span>`:''}`;
   const dt = $('delTableBtn'); if (dt) dt.onclick = async()=>{
     if (!confirm(`Delete table "${d.table.name}" and all its rows?`)) return;
     await api(`/api/tables/${d.table.id}`,{method:'DELETE'}); await loadTables(); toast('Table deleted');
   };
+  const rt = $('renTableBtn'); if (rt) rt.onclick = async()=>{
+    const v = await ask('Rename table', [{label:'Name',value:d.table.name}], 'Save');
+    if (!v || !v[0]) return;
+    await api(`/api/tables/${d.table.id}`,{method:'PATCH',body:JSON.stringify({name:v[0]})});
+    toast('Table renamed'); await loadTables();
+  };
 }
 window.delRecord = async (rid)=>{ if(!confirm('Delete this record?')) return; await api(`/api/records/${rid}`,{method:'DELETE'}); loadActiveTable(); };
+window.editRecord = async (rid)=>{
+  const cols = (state.activeTable?.columns||[]);
+  if (!cols.length) return toast('No columns');
+  const cur = (state.activeRows||[]).find(r=>r.id===rid);
+  const v = await ask('Edit record', cols.map(c=>({label:c.label||c.name, value:(cur?.data||{})[c.name]??''})), 'Save');
+  if (!v) return;
+  const data = {};
+  cols.forEach((c,i)=>{ data[c.name] = v[i] ?? ''; });
+  try { await api(`/api/records/${rid}`,{method:'PATCH',body:JSON.stringify({data})}); toast('Record updated'); loadActiveTable(); }
+  catch(e){ toast(e.message); }
+};
 $('addRecordBtn').onclick = ()=>fillFirstForm();
 $('addTableRowBtn').onclick = ()=>fillFirstForm();
 $('importDataBtn').onclick = ()=>toast('CSV import: use Forms below for now');
@@ -3083,9 +3113,20 @@ async function loadTasks(){ state.tasks = await api(`/api/groups/${state.groupId
 function renderTasks(){
   const grid = document.querySelector('#view-tasks .collection-grid'); if(!grid) return;
   if (!state.tasks.length){ grid.innerHTML = `<div class="empty-state">No tasks yet. Post one from chat: <code>/task Airport shift</code></div>`; return; }
-  grid.innerHTML = state.tasks.map(t=>`<article class="item-card"><div class="item-top"><div><h3>${esc(t.title)}</h3><p>${esc(t.description||'')} ${esc(t.payout_text||'')}</p><p style="color:var(--muted);font-size:11px">audience ${esc(JSON.stringify(t.audience||{}))}${t.rule_id?' · rule #'+t.rule_id:''}</p></div></div><div class="item-foot"><span class="tag ${t.status==='live'?'green':'yellow'}">${esc(t.status)}</span>${t.responded} of ${t.offered} responded</div><div style="display:flex;gap:6px;margin-top:8px"><button class="quiet" onclick="showOffers(${t.id})">Offers</button>${t.my_offer ? (t.my_offer.status==='accepted'||t.my_offer.status==='completed' ? `<button class="quiet" disabled>Accepted ✓</button>` : t.my_offer.status==='declined' ? `<button class="quiet" disabled>Declined</button>` : `<button class="quiet" onclick="acceptFirst(${t.id},this)">Accept as me</button>`) : `<button class="quiet" onclick="acceptFirst(${t.id},this)">Accept as me</button>`}<button class="quiet" onclick="shareTaskCard(${t.id})">Share to chat</button></div><div id="off-${t.id}" style="margin-top:6px;font-size:12px"></div></article>`).join('');
+  grid.innerHTML = state.tasks.map(t=>`<article class="item-card"><div class="item-top"><div><h3>${esc(t.title)}</h3><p>${esc(t.description||'')} ${esc(t.payout_text||'')}</p><p style="color:var(--muted);font-size:11px">audience ${esc(JSON.stringify(t.audience||{}))}${t.rule_id?' · rule #'+t.rule_id:''}</p></div></div><div class="item-foot"><span class="tag ${t.status==='live'?'green':'yellow'}">${esc(t.status)}</span>${t.responded} of ${t.offered} responded</div><div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><button class="quiet" onclick="showOffers(${t.id})">Offers</button>${t.my_offer ? (t.my_offer.status==='accepted'||t.my_offer.status==='completed' ? `<button class="quiet" disabled>Accepted ✓</button>` : t.my_offer.status==='declined' ? `<button class="quiet" disabled>Declined</button>` : `<button class="quiet" onclick="acceptFirst(${t.id},this)">Accept as me</button>`) : `<button class="quiet" onclick="acceptFirst(${t.id},this)">Accept as me</button>`}<button class="quiet" onclick="shareTaskCard(${t.id})">Share to chat</button>${state.myRole==='admin'?`<button class="quiet" onclick="editTask(${t.id})">Edit</button><button class="quiet" onclick="delTask(${t.id})">Delete</button>`:''}</div><div id="off-${t.id}" style="margin-top:6px;font-size:12px"></div></article>`).join('');
   const b=$('taskCountBadge'); if(b) b.textContent=state.tasks.length;
 }
+window.editTask = async (tid)=>{
+  const t = state.tasks.find(x=>x.id===tid); if(!t) return;
+  const v = await ask('Edit task', [{label:'Title',value:t.title},{label:'Description',value:t.description||''},{label:'Payout',value:t.payout_text||''},{label:'Status',type:'select',options:['live','draft','closed'],value:t.status}], 'Save');
+  if (!v) return;
+  await api(`/api/tasks/${tid}`,{method:'PATCH',body:JSON.stringify({title:v[0],description:v[1],payout_text:v[2],status:v[3]})});
+  toast('Task updated'); loadTasks().then(renderTasks);
+};
+window.delTask = async (tid)=>{
+  if (!confirm('Delete this task and its offers?')) return;
+  await api(`/api/tasks/${tid}`,{method:'DELETE'}); toast('Task deleted'); loadTasks().then(renderTasks);
+};
 window.showOffers = async (tid)=>{
   const o = await api(`/api/tasks/${tid}/offers`);
   $('off-'+tid).innerHTML = o.map(x=>`${esc(x.member)} — <b>${x.status}</b> <button onclick="respondOffer(${x.id},'accept')">accept</button> <button onclick="respondOffer(${x.id},'decline')">decline</button>`).join('<br>') || 'No offers — eligibility rule/tags filtered everyone out.';
@@ -3144,10 +3185,21 @@ function renderForms(){
     const done = (f.my_responses||0) > 0 && !f.allow_multiple;
     const btn = done ? `<button class="primary" disabled>Submitted ✓</button>`
       : `<button class="primary" onclick="openFormModal(${f.id},this)">${f.allow_multiple&&f.my_responses?`Submit again (${f.my_responses} in)`:'Fill form'}</button>`;
-    return `<article class="item-card"><div class="item-top"><div><h3>${esc(f.title)}</h3><p>${esc(f.description||'')}</p><p style="font-size:11px;color:var(--muted)">${(f.fields||[]).length} fields → table ${f.table_id||'—'}${f.rule_id?' · rule #'+f.rule_id:''}${f.allow_multiple?' · multiple allowed':''}</p></div></div><div class="item-foot"><span class="tag green">${esc(f.status)}</span>${f.responses} responses</div><div style="margin-top:8px;display:flex;gap:6px">${btn}<button class="quiet" onclick="shareFormCard(${f.id})">Share to chat</button></div></article>`;
+    return `<article class="item-card"><div class="item-top"><div><h3>${esc(f.title)}</h3><p>${esc(f.description||'')}</p><p style="font-size:11px;color:var(--muted)">${(f.fields||[]).length} fields → table ${f.table_id||'—'}${f.rule_id?' · rule #'+f.rule_id:''}${f.allow_multiple?' · multiple allowed':''}</p></div></div><div class="item-foot"><span class="tag green">${esc(f.status)}</span>${f.responses} responses</div><div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">${btn}<button class="quiet" onclick="shareFormCard(${f.id})">Share to chat</button>${state.myRole==='admin'?`<button class="quiet" onclick="editForm(${f.id})">Edit</button><button class="quiet" onclick="delForm(${f.id})">Delete</button>`:''}</div></article>`;
   }).join('')
     : `<div class="empty-state">No forms yet — create one to classify members and write structured rows.</div>`;
 }
+window.editForm = async (fid)=>{
+  const f = state.forms.find(x=>x.id===fid); if(!f) return;
+  const v = await ask('Edit form', [{label:'Title',value:f.title},{label:'Description',value:f.description||''},{label:'Responses',type:'select',options:['One per member','Multiple allowed'],value:f.allow_multiple?'Multiple allowed':'One per member'}], 'Save');
+  if (!v) return;
+  await api(`/api/forms/${fid}`,{method:'PATCH',body:JSON.stringify({title:v[0],description:v[1],allow_multiple:v[2]==='Multiple allowed'})});
+  toast('Form updated'); loadForms().then(renderForms);
+};
+window.delForm = async (fid)=>{
+  if (!confirm('Delete this form and its submissions?')) return;
+  await api(`/api/forms/${fid}`,{method:'DELETE'}); toast('Form deleted'); loadForms().then(renderForms);
+};
 window.openFormModal = async (fid, btn)=>{
   const f = state.forms.find(x=>x.id===fid) || state.forms[0];
   if (!f) return toast('No forms yet');
@@ -3197,9 +3249,20 @@ function renderViews(){
     <div class="stat-card"><strong>${d.records??'—'}</strong><span>records</span></div>
     <div class="stat-card"><strong>${d.schedules??'—'}</strong><span>schedules</span></div></div>`;
   const grid = sec.querySelector('.collection-grid');
-  grid.innerHTML = state.views.map(v=>`<article class="item-card"><div><h3>${esc(v.title)}</h3><p>${esc(v.description||'')}</p><p style="font-size:11px;color:var(--muted)">${v.stat?.rows??'?'} rows${v.stat?.avg!=null?' · avg '+v.stat.avg:''} · ${esc(v.template)}</p></div><div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap"><button class="quiet" onclick="openView(${v.id})">Open dashboard</button><button class="quiet" onclick="shareView(${v.id})">Share to chat</button><button class="quiet" onclick="publishView(${v.id})">Publish page</button></div><div id="vw-${v.id}" style="margin-top:6px;font-size:12px;overflow-x:auto"></div></article>`).join('')
+  grid.innerHTML = state.views.map(v=>`<article class="item-card"><div><h3>${esc(v.title)}</h3><p>${esc(v.description||'')}</p><p style="font-size:11px;color:var(--muted)">${v.stat?.rows??'?'} rows${v.stat?.avg!=null?' · avg '+v.stat.avg:''} · ${esc(v.template)}</p></div><div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap"><button class="quiet" onclick="openView(${v.id})">Open dashboard</button><button class="quiet" onclick="shareView(${v.id})">Share to chat</button><button class="quiet" onclick="publishView(${v.id})">Publish page</button>${state.myRole==='admin'?`<button class="quiet" onclick="editView(${v.id})">Edit</button><button class="quiet" onclick="delView(${v.id})">Delete</button>`:''}</div><div id="vw-${v.id}" style="margin-top:6px;font-size:12px;overflow-x:auto"></div></article>`).join('')
     + `<article class="item-card"><h3>Generate with AI</h3><p>Describe the slice you want to see.</p><input id="genPrompt" placeholder="verified drivers in Lagos" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px"><button class="primary" style="margin-top:8px" onclick="genView()">Generate</button></article>`;
 }
+window.editView = async (vid)=>{
+  const v = state.views.find(x=>x.id===vid); if(!v) return;
+  const r = await ask('Edit dashboard', [{label:'Title',value:v.title},{label:'Description',value:v.description||''}], 'Save');
+  if (!r) return;
+  await api(`/api/views/${vid}`,{method:'PATCH',body:JSON.stringify({title:r[0],description:r[1]})});
+  toast('View updated'); loadViews().then(renderViews);
+};
+window.delView = async (vid)=>{
+  if (!confirm('Delete this dashboard and its published pages?')) return;
+  await api(`/api/views/${vid}`,{method:'DELETE'}); toast('View deleted'); loadViews().then(renderViews);
+};
 window.openView = async (vid)=>{
   const d = await api(`/api/views/${vid}/rows`);
   $('vw-'+vid).innerHTML = d.rows.length
@@ -3225,9 +3288,13 @@ async function loadAgents(){
 }
 function renderAgents(){
   const grid = document.querySelector('#view-agents .collection-grid'); if(!grid) return;
-  grid.innerHTML = state.agents.map(a=>`<article class="item-card"><div><h3>${esc(a.name)}</h3><p>${esc(a.description||a.kind)}</p><p style="font-size:11px;color:var(--muted)">${esc(a.kind)}</p></div><div class="item-foot"><span class="tag green">Online</span>${esc((a.config?.permissions||[]).join(', ')||'read')}</div><div style="display:flex;gap:6px;margin-top:8px"><input id="q-${a.id}" placeholder="ask / match…" style="flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:6px"><button class="primary" onclick="runAgent(${a.id})">Run</button></div></article>`).join('')
+  grid.innerHTML = state.agents.map(a=>`<article class="item-card"><div><h3>${esc(a.name)}</h3><p>${esc(a.description||a.kind)}</p><p style="font-size:11px;color:var(--muted)">${esc(a.kind)}</p></div><div class="item-foot"><span class="tag green">Online</span>${esc((a.config?.permissions||[]).join(', ')||'read')}</div><div style="display:flex;gap:6px;margin-top:8px"><input id="q-${a.id}" placeholder="ask / match…" style="flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:6px"><button class="primary" onclick="runAgent(${a.id})">Run</button>${state.myRole==='admin'?`<button class="quiet" onclick="delAgent(${a.id})">Delete</button>`:''}</div></article>`).join('')
   + `<article class="item-card" style="grid-column:1/-1"><h3>Proposals — Query → Act → Return → Mutate</h3><div style="font-size:12px">${(state.runs||[]).map(r=>`<div style="border-top:1px solid var(--border);padding:6px 0"><b>run #${r.id}</b> agent ${r.agent_id} → ${esc(r.status)} · ${esc(r.note||'')}<br>${(r.items||[]).slice(0,3).map(i=>`• ${esc(i.title)} (${i.score??'—'}%)`).join('<br>')}<br><button class="primary" onclick="confirmRun(${r.id})">Confirm &amp; mutate</button> <button class="quiet" onclick="rejectRun(${r.id})">Reject</button></div>`).join('')||'No runs yet.'}</div></article>`;
 }
+window.delAgent = async (aid)=>{
+  if (!confirm('Delete this agent?')) return;
+  await api(`/api/agents/${aid}`,{method:'DELETE'}); toast('Agent deleted'); loadAgents().then(renderAgents);
+};
 window.runAgent = async (aid)=>{
   const q = ($('q-'+aid)||{}).value||'';
   const r = await api(`/api/agents/${aid}/run`,{method:'POST',body:JSON.stringify({query:q})});
@@ -3263,12 +3330,16 @@ function renderSchedules(){
       </div>`;
     }
   }
-  g.innerHTML = state.schedules.length ? state.schedules.map(s=>`<article class="item-card"><div><h3>${esc(s.name)}</h3><p>${esc(s.kind)} ${esc(s.cron_expr||s.time_of_day||(s.interval_seconds?s.interval_seconds+'s':''))} → <b>${esc(s.action)}</b></p><p style="font-size:11px;color:var(--muted)">next ${esc(s.next_run||'—')} · last ${esc(s.last_run||'—')}</p></div><div class="item-foot"><span class="tag ${s.active?'green':'yellow'}">${s.active?'Active':'Paused'}</span></div><div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">${admin?`<button class="primary" onclick="runNow(${s.id})">Run now</button><button class="quiet" onclick="toggleSched(${s.id})">${s.active?'Pause':'Resume'}</button>`:''}<button class="quiet" onclick="schedRuns(${s.id})">Runs</button></div></article>`).join('')
+  g.innerHTML = state.schedules.length ? state.schedules.map(s=>`<article class="item-card"><div><h3>${esc(s.name)}</h3><p>${esc(s.kind)} ${esc(s.cron_expr||s.time_of_day||(s.interval_seconds?s.interval_seconds+'s':''))} → <b>${esc(s.action)}</b></p><p style="font-size:11px;color:var(--muted)">next ${esc(s.next_run||'—')} · last ${esc(s.last_run||'—')}</p></div><div class="item-foot"><span class="tag ${s.active?'green':'yellow'}">${s.active?'Active':'Paused'}</span></div><div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">${admin?`<button class="primary" onclick="runNow(${s.id})">Run now</button><button class="quiet" onclick="toggleSched(${s.id})">${s.active?'Pause':'Resume'}</button><button class="quiet" onclick="delSched(${s.id})">Delete</button>`:''}<button class="quiet" onclick="schedRuns(${s.id})">Runs</button></div></article>`).join('')
     : `<div class="empty-state">No schedules yet — put routine work on autopilot.</div>`;
 }
 window.loadSchedulesUI = async ()=>{ await loadSchedules(); renderSchedules(); };
 window.runNow = async (id)=>{ const r = await api(`/api/schedules/${id}/run-now`,{method:'POST',body:'{}'}); toast('Ran: '+r.status); loadSchedules().then(renderSchedules); loadInbox(); loadMessages(true); };
 window.toggleSched = async (id)=>{ await api(`/api/schedules/${id}/toggle`,{method:'POST',body:'{}'}); loadSchedules().then(renderSchedules); };
+window.delSched = async (id)=>{
+  if (!confirm('Delete this schedule?')) return;
+  await api(`/api/schedules/${id}`,{method:'DELETE'}); toast('Schedule deleted'); loadSchedules().then(renderSchedules);
+};
 window.schedRuns = async (id)=>{ const r = await api(`/api/schedules/${id}/runs`); $('scheduleRunsBox').innerHTML = '<b>Recent runs</b><br>'+r.map(x=>`#${x.id} ${x.status} — ${esc(JSON.stringify(x.detail).slice(0,160))}`).join('<br>'); };
 $('newScheduleBtn').onclick = async ()=>{
   if (state.myRole!=='admin') return toast('Admins only');
@@ -3286,9 +3357,13 @@ async function loadFlows(){ state.flows = await api(`/api/groups/${state.groupId
 function renderFlows(){
   const g = $('flowGrid'); if(!g) return;
   const admin = state.myRole==='admin';
-  g.innerHTML = state.flows.length ? state.flows.map(f=>`<article class="item-card"><div><h3>${esc(f.name)}</h3><p>WHEN <code>${esc(f.trigger_event)}${f.trigger_ref?' #'+f.trigger_ref:''}</code> THEN <code>${esc(f.action)}</code></p><p style="font-size:11px;color:var(--muted)">${esc(JSON.stringify(f.action_config||{}).slice(0,120))}</p></div><div class="item-foot"><span class="tag ${f.active?'green':'yellow'}">${f.active?'On':'Off'}</span></div>${admin?`<button class="quiet" onclick="toggleFlow(${f.id})">Toggle</button>`:''}</article>`).join('')
+  g.innerHTML = state.flows.length ? state.flows.map(f=>`<article class="item-card"><div><h3>${esc(f.name)}</h3><p>WHEN <code>${esc(f.trigger_event)}${f.trigger_ref?' #'+f.trigger_ref:''}</code> THEN <code>${esc(f.action)}</code></p><p style="font-size:11px;color:var(--muted)">${esc(JSON.stringify(f.action_config||{}).slice(0,120))}</p></div><div class="item-foot"><span class="tag ${f.active?'green':'yellow'}">${f.active?'On':'Off'}</span></div>${admin?`<button class="quiet" onclick="toggleFlow(${f.id})">Toggle</button><button class="quiet" onclick="delFlow(${f.id})">Delete</button>`:''}</article>`).join('')
     : `<div class="empty-state">No flows yet — chain task completion into the next step automatically.</div>`;
 }
+window.delFlow = async (id)=>{
+  if (!confirm('Delete this flow?')) return;
+  await api(`/api/redirects/${id}`,{method:'DELETE'}); toast('Flow deleted'); loadFlows().then(renderFlows);
+};
 window.toggleFlow = async (id)=>{ await api(`/api/groups/${state.groupId}/redirects/${id}/toggle`,{method:'POST',body:'{}'}); loadFlows().then(renderFlows); };
 $('newFlowBtn').onclick = async ()=>{
   if (state.myRole!=='admin') return toast('Admins only');
