@@ -1,5 +1,6 @@
 """Platform monolith — FastAPI app serving API + UI in one process."""
 import os
+import re
 import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -489,13 +490,15 @@ def test_rule(rid: int, body: dict, user: models.User = Depends(get_current_user
 # ---------- forms ----------
 @app.get("/api/groups/{gid}/forms")
 def list_forms(gid: int, user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
-    me_in(db, gid, user)
+    me = me_in(db, gid, user)
     out = []
     for f in db.query(models.FormDef).filter_by(group_id=gid).all():
         n = db.query(models.FormSubmission).filter_by(form_id=f.id).count()
+        mine = db.query(models.FormSubmission).filter_by(form_id=f.id, member_id=me.id).count()
         out.append({"id": f.id, "title": f.title, "description": f.description,
                     "fields": f.fields or [], "table_id": f.table_id, "rule_id": f.rule_id,
-                    "status": f.status, "responses": n})
+                    "status": f.status, "responses": n,
+                    "my_responses": mine, "allow_multiple": bool(f.allow_multiple)})
     return out
 
 
@@ -506,7 +509,8 @@ def create_form(gid: int, body: dict, user: models.User = Depends(get_current_us
         raise HTTPException(400, "title required")
     f = models.FormDef(group_id=gid, table_id=body.get("table_id"), title=body["title"].strip(),
                        description=body.get("description", ""), fields=body.get("fields", []),
-                       rule_id=body.get("rule_id"), status=body.get("status", "published"))
+                       rule_id=body.get("rule_id"), status=body.get("status", "published"),
+                       allow_multiple=bool(body.get("allow_multiple", False)))
     db.add(f)
     db.flush()
     # shared into the chat as a fillable card, like the template's form cards
@@ -524,6 +528,10 @@ def submit_form(fid: int, body: dict, user: models.User = Depends(get_current_us
         raise HTTPException(404, "form not found")
     member = me_in(db, f.group_id, user)
     data = body.get("data", {})
+    if not f.allow_multiple:
+        prior = db.query(models.FormSubmission).filter_by(form_id=fid, member_id=member.id, status="accepted").count()
+        if prior:
+            raise HTTPException(400, "you already submitted this form — one response per member")
     missing = [fld["name"] for fld in (f.fields or []) if fld.get("required") and not data.get(fld["name"])]
     if missing:
         raise HTTPException(400, f"Missing required: {', '.join(missing)}")
@@ -565,14 +573,16 @@ def submit_form(fid: int, body: dict, user: models.User = Depends(get_current_us
 # ---------- tasks ----------
 @app.get("/api/groups/{gid}/tasks")
 def list_tasks(gid: int, user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
-    me_in(db, gid, user)
+    me = me_in(db, gid, user)
     out = []
     for t in db.query(models.TaskDef).filter_by(group_id=gid).order_by(models.TaskDef.id).all():
         offers = db.query(models.TaskOffer).filter_by(task_id=t.id).all()
+        mine = next((o for o in offers if o.member_id == me.id), None)
         out.append({"id": t.id, "title": t.title, "description": t.description,
                     "payout_text": t.payout_text, "rule_id": t.rule_id, "audience": t.audience or {},
                     "status": t.status, "offered": len(offers),
-                    "responded": len([o for o in offers if o.status != "offered"])})
+                    "responded": len([o for o in offers if o.status != "offered"]),
+                    "my_offer": {"id": mine.id, "status": mine.status} if mine else None})
     return out
 
 
@@ -659,6 +669,10 @@ def respond_offer(oid: int, body: dict, user: models.User = Depends(get_current_
         raise HTTPException(403, "this offer isn't yours")
     m = db.query(models.Membership).filter_by(id=o.member_id).first()
     decision = (body.get("decision") or "accept").lower()
+    want = "completed" if body.get("complete") else ("accepted" if decision in ("accept", "accepted") else "declined")
+    if o.status == want or (want == "accepted" and o.status == "completed"):
+        db.commit()  # idempotent: no duplicate inboxes, messages or events
+        return {"id": o.id, "status": o.status, "already": True}
     if decision in ("accept", "accepted"):
         if t and t.rule_id:
             r = db.query(models.Rule).filter_by(id=t.rule_id).first()
@@ -1064,11 +1078,148 @@ def share_view(gid: int, vid: int, user: models.User = Depends(get_current_user)
     v = db.query(models.PageView).filter_by(id=vid, group_id=gid).first()
     if not v:
         raise HTTPException(404, "view not found")
-    post_message(db, gid, f"shared the '{v.title}' dashboard.", kind="view",
+    post_message(db, gid, f"shared the '{v.title}' dashboard.", kind="view", author=member.display_name,
                  member_id=member.id, payload={"view_id": v.id, "title": v.title,
                                                "blurb": v.description or "Live from group tables"})
     db.commit()
     return {"shared": vid}
+
+
+AI_KINDS = ("task", "form", "schedule", "redirect", "table")
+AI_MEMBER_KINDS = ("task", "form")  # any member; the rest are admin-only
+
+
+def _clean_str(v, maxlen):
+    v = str(v or "").strip()
+    return v[:maxlen] if v else ""
+
+
+@app.post("/api/groups/{gid}/ai/propose")
+def ai_propose_endpoint(gid: int, body: dict, user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Step 1: turn a prompt into a structured creation spec. Writes nothing."""
+    from app.ai import ai_propose
+    me_in(db, gid, user)
+    kind = (body.get("kind") or "").strip()
+    if kind not in AI_KINDS:
+        raise HTTPException(400, f"kind must be one of {', '.join(AI_KINDS)}")
+    tables = db.query(models.TableDef).filter_by(group_id=gid).all()
+    snap = "tables: " + ", ".join(f"{t.key}({','.join(c.get('name', '') for c in (t.columns or []))})" for t in tables)
+    spec, model, warnings = ai_propose(kind, body.get("prompt", ""), snap)
+    if not spec:
+        raise HTTPException(400, (warnings or ["could not understand that — try being more specific"])[0])
+    return {"kind": kind, "spec": spec, "model": model, "warnings": warnings}
+
+
+@app.post("/api/groups/{gid}/ai/apply")
+def ai_apply_endpoint(gid: int, body: dict, user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Step 2: validate the spec strictly, then create exactly what it says."""
+    kind = (body.get("kind") or "").strip()
+    spec = body.get("spec") or {}
+    if kind not in AI_KINDS or not isinstance(spec, dict):
+        raise HTTPException(400, "kind and spec required")
+    if kind in AI_MEMBER_KINDS:
+        me = me_in(db, gid, user)
+    else:
+        me = require_admin(gid, user, db)
+    title = _clean_str(spec.get("title") or spec.get("name"), 160)
+    if kind == "task":
+        if not title:
+            raise HTTPException(400, "spec needs a title")
+        tags = [str(x)[:32] for x in (spec.get("audience_tags") or []) if str(x).strip()][:5]
+        t = models.TaskDef(group_id=gid, title=title, description=_clean_str(spec.get("description"), 500),
+                           payout_text=_clean_str(spec.get("payout_text"), 60),
+                           audience={"tags": tags} if tags else {},
+                           status="live", created_by=me.id)
+        db.add(t)
+        db.flush()
+        post_message(db, gid, f"posted the task '{title}' (from AI draft).", kind="task",
+                     author=me.display_name, member_id=me.id, payload={"task_id": t.id})
+        n = create_offers_for_task(db, t, announce=False)
+        db.commit()
+        return {"id": t.id, "offered": n}
+    if kind == "form":
+        if not title:
+            raise HTTPException(400, "spec needs a title")
+        fields = []
+        for f in (spec.get("fields") or [])[:8]:
+            if not isinstance(f, dict):
+                continue
+            name = _clean_str(f.get("name"), 40) or "field"
+            ftype = f.get("type") if f.get("type") in ("text", "number", "select") else "text"
+            fields.append({"name": name, "label": _clean_str(f.get("label") or name, 60),
+                           "type": ftype, "required": bool(f.get("required", True)),
+                           "options": [str(o)[:40] for o in (f.get("options") or [])[:8]] if ftype == "select" else []})
+        if not fields:
+            raise HTTPException(400, "spec needs at least one field")
+        table_id = spec.get("table_id")
+        if table_id and not db.query(models.TableDef).filter_by(id=table_id, group_id=gid).first():
+            table_id = None
+        rule_id = spec.get("rule_id")
+        if rule_id and not db.query(models.Rule).filter_by(id=rule_id, group_id=gid).first():
+            rule_id = None
+        f = models.FormDef(group_id=gid, table_id=table_id, title=title,
+                           description=_clean_str(spec.get("description"), 300), fields=fields,
+                           rule_id=rule_id, status="published",
+                           allow_multiple=bool(spec.get("allow_multiple", False)))
+        db.add(f)
+        db.flush()
+        post_message(db, gid, f"shared the form '{title}' (from AI draft).", kind="form", author=me.display_name,
+                     member_id=me.id, payload={"form_id": f.id, "title": title, "blurb": f"{len(fields)} questions"})
+        db.commit()
+        return {"id": f.id}
+    if kind == "schedule":
+        action = spec.get("action")
+        if action not in ("inspect", "match", "follow_up", "report", "motivate", "push_inbox", "create_task", "run_agent"):
+            raise HTTPException(400, "spec has an unknown schedule action")
+        skind = spec.get("kind") if spec.get("kind") in ("once", "interval", "daily", "weekly", "cron") else "daily"
+        s = models.Schedule(group_id=gid, name=title or "AI schedule", description=_clean_str(spec.get("note"), 200),
+                            kind=skind, time_of_day=_clean_str(spec.get("time_of_day"), 5) or "09:00",
+                            interval_seconds=int(spec.get("interval_seconds") or 3600) if skind == "interval" else None,
+                            cron_expr=_clean_str(spec.get("cron_expr"), 32),
+                            action=action, action_config={"note": _clean_str(spec.get("note"), 200)},
+                            active=True, created_by=me.id)
+        normalize_schedule(s)
+        db.add(s)
+        db.commit()
+        post_message(db, gid, f"scheduled '{s.name}' ({s.kind} → {s.action}) (from AI draft).", kind="schedule",
+                     author=me.display_name, member_id=me.id)
+        db.commit()
+        return {"id": s.id}
+    if kind == "redirect":
+        trig = spec.get("trigger_event")
+        if trig not in ("offer.accepted", "task.accepted", "task.completed", "form.submitted", "status.confirmed", "schedule.fired", "member.joined"):
+            raise HTTPException(400, "spec has an unknown trigger")
+        act = spec.get("action")
+        if act not in ("push_inbox", "push_public", "create_task", "write_record", "run_agent"):
+            raise HTTPException(400, "spec has an unknown action")
+        r = models.Redirect(group_id=gid, name=title or "AI flow", trigger_event=trig,
+                            action=act, action_config={"title": title, "body": _clean_str(spec.get("message"), 300)},
+                            active=True)
+        db.add(r)
+        db.commit()
+        return {"id": r.id}
+    # table
+    if db.query(models.TableDef).filter_by(group_id=gid).count() >= 5:
+        raise HTTPException(400, "Five-table cap reached.")
+    if not title:
+        raise HTTPException(400, "spec needs a name")
+    cols = []
+    for c in (spec.get("columns") or [])[:8]:
+        if not isinstance(c, dict):
+            continue
+        cols.append({"name": _clean_str(c.get("name"), 40) or "col",
+                     "label": _clean_str(c.get("label") or c.get("name"), 40),
+                     "type": c.get("type") if c.get("type") in ("text", "number", "select") else "text"})
+    if not cols:
+        raise HTTPException(400, "spec needs at least one column")
+    key = re.sub(r"[^a-z0-9]+", "_", title.lower()).strip("_")[:64] or "table"
+    if db.query(models.TableDef).filter_by(group_id=gid, key=key).first():
+        raise HTTPException(400, "a table with that name already exists")
+    t = models.TableDef(group_id=gid, key=key, name=title,
+                        description=_clean_str(spec.get("description"), 200), columns=cols)
+    db.add(t)
+    db.commit()
+    return {"id": t.id, "key": key}
 
 
 # ---------- redirects / workflows ----------

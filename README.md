@@ -103,6 +103,18 @@ No separate Rules tab. Task and form builders carry a rule dropdown (reuse any
 existing rule) plus a plain-words box (admins: compiled, confirmed and
 attached in one motion).
 
+Engaged state is sticky: accepted tasks show Accepted ✓, declined stay
+declined, submitted forms show Submitted ✓ — double taps are idempotent
+server-side too. Forms can allow multiple responses if the builder says so.
+
+## Draft with AI (Gemini)
+
+Every builder has an ✨ AI draft button (tasks, forms, schedules, flows,
+tables — manual creation stays). Prompt → structured spec preview (with the
+model named, or local-fallback badge) → confirm → created and announced in
+chat. Specs are validated strictly on apply: unknown actions, triggers,
+types, cross-group ids and the five-table cap are all rejected.
+
 ## Paced catch-up (phased messages)
 
 On by default in every group: new messages arrive one at a time, gap

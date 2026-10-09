@@ -24,6 +24,7 @@ Env:
 """
 import json
 import os
+import re
 import urllib.request
 import urllib.error
 
@@ -233,3 +234,94 @@ def ai_chat_structured_suggest(message_text, schema_snapshot=""):
         except Exception:
             return {}
     return {}
+
+
+GENERATE_SCHEMAS = {
+    "task": "Respond with ONLY JSON: {\"title\":string(required,<=120 chars),\"description\":string,\"payout_text\":string,\"audience_tags\":[string]}. Derive a short actionable title from the request; put details in description.",
+    "form": "Respond with ONLY JSON: {\"title\":string(required,<=120 chars),\"description\":string,\"fields\":[{\"name\":string snake_case,\"label\":string,\"type\":one of text|number|select,\"required\":bool,\"options\":[string] for select}],\"allow_multiple\":bool}. Turn each requested question into a field; max 8 fields.",
+    "schedule": "Respond with ONLY JSON: {\"name\":string(required),\"kind\":one of once|interval|daily|weekly|cron,\"time_of_day\":string HH:MM for daily|weekly,\"interval_seconds\":int for interval,\"cron_expr\":string for cron,\"action\":one of inspect|match|follow_up|report|motivate|push_inbox|create_task|run_agent,\"note\":string}. Default kind daily 09:00 action report unless the request says otherwise.",
+    "redirect": "Respond with ONLY JSON: {\"name\":string(required),\"trigger_event\":one of offer.accepted|task.accepted|task.completed|form.submitted|status.confirmed|schedule.fired|member.joined,\"action\":one of push_inbox|push_public|create_task|write_record|run_agent,\"message\":string(the text of the next step)}. Map accept/complete/submit/confirm/time/join words to the closest trigger.",
+    "table": "Respond with ONLY JSON: {\"name\":string(required),\"description\":string,\"columns\":[{\"name\":string snake_case,\"label\":string,\"type\":one of text|number|select}%(max 8 columns)].",
+}
+
+GENERATE_ROLES = {"task": "compile", "form": "compile", "schedule": "plan", "redirect": "plan", "table": "plan"}
+
+
+def _slug(s, maxlen=40):
+    s = re.sub(r"[^a-z0-9]+", "_", (s or "").lower()).strip("_")
+    return (s or "field")[:maxlen]
+
+
+def local_propose(kind, prompt):
+    t = (prompt or "").strip()
+    if kind == "task":
+        pay = ""
+        m = re.search(r"(?:\$|₦)\s?(\d[\d,]*)", t) or re.search(r"(?:pays?|payout|fee)\s+(?:\$|₦)?\s?(\d[\d,]*)", t, re.I)
+        if m:
+            pay = "$" + m.group(1)
+        title = re.sub(r"^(task|create|add|post|make)\s+", "", t, flags=re.I).strip().split("\n")[0][:120] or "Untitled task"
+        return {"title": title, "description": t[:300], "payout_text": pay, "audience_tags": []}, []
+    if kind == "form":
+        parts = [p.strip() for p in re.split(r"[,;\n]+", t) if p.strip()]
+        title = parts[0][:120] if parts else "Untitled form"
+        rest = parts[1:]
+        if parts and ":" in parts[0]:
+            head, tail = parts[0].split(":", 1)
+            if head.strip():
+                title = head.strip()[:120]
+            if tail.strip():
+                rest = [tail.strip()] + rest
+        qs = rest[:7] if rest else ["Answer"]
+        return {"title": title, "description": "", "fields": [{"name": _slug(q), "label": q[:60], "type": "text", "required": True} for q in qs], "allow_multiple": False}, []
+    if kind == "schedule":
+        low = t.lower()
+        spec = {"name": t[:80] or "Scheduled job", "kind": "daily", "time_of_day": "09:00", "action": "report", "note": t[:200]}
+        m = re.search(r"(\d{1,2}):(\d{2})", t)
+        if m:
+            spec["time_of_day"] = f"{int(m.group(1)):02d}:{m.group(2)}"
+        m2 = re.search(r"every\s+(\d+)\s*(min|sec|hour)", low)
+        if m2:
+            spec["kind"] = "interval"
+            spec["interval_seconds"] = int(m2.group(1)) * (60 if "min" in m2.group(2) else 3600 if "hour" in m2.group(2) else 1)
+            spec.pop("time_of_day", None)
+        for act in ("match", "inspect", "follow_up", "report", "motivate"):
+            if act.replace("_", " ") in low or act in low:
+                spec["action"] = act
+                break
+        return spec, []
+    if kind == "redirect":
+        low = t.lower()
+        trig = "task.completed"
+        for key, ev in (("accept", "offer.accepted"), ("complet", "task.completed"), ("submit", "form.submitted"), ("confirm", "status.confirmed"), ("schedul", "schedule.fired"), ("join", "member.joined")):
+            if key in low:
+                trig = ev
+                break
+        return {"name": t[:80] or "Untitled flow", "trigger_event": trig, "action": "push_inbox", "message": t[:300]}, []
+    if kind == "table":
+        parts = [p.strip() for p in re.split(r"[,;\n]+", t) if p.strip()]
+        name = parts[0][:60] if parts else "Untitled table"
+        cols = [{"name": _slug(c), "label": c[:40], "type": "number" if re.search(r"(amount|qty|price|value|count|number|rating|votes)", c, re.I) else "text"} for c in parts[1:9]]
+        return {"name": name, "description": "", "columns": cols or [{"name": "title", "label": "Title", "type": "text"}]}, []
+    return {}, ["unknown kind"]
+
+
+def ai_propose(kind, prompt, snapshot=""):
+    if kind not in GENERATE_SCHEMAS:
+        return {}, "local", ["unknown kind: %s" % kind]
+    if not (prompt or "").strip():
+        return {}, "local", ["describe what you want first"]
+    system = ("You turn a group organizer's request into a structured creation spec. " + GENERATE_SCHEMAS[kind])
+    text = _chat(
+        [{"role": "system", "content": system},
+         {"role": "user", "content": "Request: %s\nContext: %s" % (prompt[:800], snapshot[:1200])}],
+        GENERATE_ROLES[kind], max_tokens=600, temperature=0.2,
+    )
+    if text:
+        try:
+            spec = json.loads(text[text.find("{"):text.rfind("}") + 1])
+            if isinstance(spec, dict) and spec:
+                return spec, AI_MODELS[GENERATE_ROLES[kind]], []
+        except Exception as e:
+            return local_propose(kind, prompt)[0], "local-fallback", ["gemini parse issue: %s" % e]
+    spec, _ = local_propose(kind, prompt)
+    return spec, "local-deterministic", []

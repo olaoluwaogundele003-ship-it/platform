@@ -1563,6 +1563,7 @@
           <p>Rows in other tables link back here automatically.</p>
           <div class="data-actions">
             <button class="quiet" id="importDataBtn">Import CSV</button>
+            <button class="quiet" id="aiTableBtn">✨ AI table</button>
             <button class="primary" id="addRecordBtn">+ Add member</button>
           </div>
         </div>
@@ -1704,6 +1705,7 @@
           <h2>Tasks</h2>
           <span>Small actions people can complete directly from conversation.</span>
           <button class="primary" id="newTaskModalBtn">+ New task</button>
+          <button class="quiet" onclick="aiFlow('task')">✨ AI draft</button>
         </div>
         <div class="collection-scroll">
           <div class="collection-grid">
@@ -1764,6 +1766,7 @@
           <h2>Forms</h2>
           <span>Friendly ways to collect structured information into your tables.</span>
           <button class="primary" id="newFormModalBtn">+ New form</button>
+          <button class="quiet" onclick="aiFlow('form')">✨ AI draft</button>
         </div>
         <div class="collection-scroll">
           <div class="collection-grid">
@@ -1896,6 +1899,7 @@
           <h2>Schedules</h2>
           <span>Group cron jobs — what jobs do, but owned by the group. Runs in this same process.</span>
           <button class="primary" id="newScheduleBtn">+ New schedule</button>
+          <button class="quiet" onclick="aiFlow('schedule')">✨ AI draft</button>
         </div>
         <div class="collection-scroll">
           <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
@@ -1917,6 +1921,7 @@
           <h2>Flows</h2>
           <span>Redirects chain one step into the next — no human advancing the process.</span>
           <button class="primary" id="newFlowBtn">+ New redirect</button>
+          <button class="quiet" onclick="aiFlow('redirect')">✨ AI draft</button>
         </div>
         <div class="collection-scroll">
           <div class="collection-grid" id="flowGrid"></div>
@@ -2655,10 +2660,18 @@ function chatCard(m){
     const t = (state.tasks||[]).find(x=>x.id===p.task_id);
     const title = t ? t.title : ('Task #'+p.task_id);
     const sub = t ? `${esc(t.description||'')} ${esc(t.payout_text||'')}`.trim() : esc(m.body);
-    return `<div class="gentle-card"><div class="card-main"><div class="card-icon"><svg class="icon" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg></div><div class="card-copy"><div class="card-label">Task · validated live</div><h3>${esc(title)}</h3><p>${sub}</p></div></div><div class="card-status">Checked against your status, location and availability</div><div class="card-actions"><button class="primary" onclick="acceptFirst(${p.task_id})">I'm available</button><button class="quiet" onclick="gotoView('tasks')">Details</button><button class="quiet" onclick="shareTaskCard(${p.task_id})">Share</button><span class="audience">${t?`${t.responded}/${t.offered} responded`:''}</span></div></div>`;
+    const st = t && t.my_offer ? t.my_offer.status : null;
+    const action = st==='accepted'||st==='completed' ? `<button class="primary" disabled>Availability confirmed ✓</button>`
+      : st==='declined' ? `<button class="quiet" disabled>Declined</button>`
+      : `<button class="primary" onclick="acceptFirst(${p.task_id},this)">I'm available</button>`;
+    return `<div class="gentle-card"><div class="card-main"><div class="card-icon"><svg class="icon" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg></div><div class="card-copy"><div class="card-label">Task · validated live</div><h3>${esc(title)}</h3><p>${sub}</p></div></div><div class="card-status">Checked against your status, location and availability</div><div class="card-actions">${action}<button class="quiet" onclick="gotoView('tasks')">Details</button><button class="quiet" onclick="shareTaskCard(${p.task_id})">Share</button><span class="audience">${t?`${t.responded}/${t.offered} responded`:''}</span></div></div>`;
   }
   if (p.form_id){
-    return `<div class="gentle-card"><div class="card-main"><div class="card-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M7 3h10l3 3v15H4V3zM8 9h8"/></svg></div><div class="card-copy"><div class="card-label">Form · writes to tables</div><h3>${esc(p.title||('Form #'+p.form_id))}</h3><p>${esc(p.blurb||'Fill it in — answers classify you automatically')}</p></div></div><div class="card-actions"><button class="primary" onclick="openFormModal(${p.form_id})">Start form</button><button class="quiet" onclick="shareFormCard(${p.form_id})">Share</button></div></div>`;
+    const f = (state.forms||[]).find(x=>x.id===p.form_id);
+    const done = f && (f.my_responses||0) > 0 && !f.allow_multiple;
+    const btn = done ? `<button class="primary" disabled>Submitted ✓</button>`
+      : `<button class="primary" onclick="openFormModal(${p.form_id},this)">Start form</button>`;
+    return `<div class="gentle-card"><div class="card-main"><div class="card-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M7 3h10l3 3v15H4V3zM8 9h8"/></svg></div><div class="card-copy"><div class="card-label">Form · writes to tables</div><h3>${esc(p.title||('Form #'+p.form_id))}</h3><p>${esc(p.blurb||'Fill it in — answers classify you automatically')}</p></div></div><div class="card-actions">${btn}<button class="quiet" onclick="shareFormCard(${p.form_id})">Share</button></div></div>`;
   }
   if (p.agent_run_id){
     return `<div class="gentle-card"><div class="card-main"><div class="card-icon"><svg class="icon" viewBox="0 0 24 24"><rect x="5" y="7" width="14" height="12" rx="2"/><path d="M12 7V3M9 12h.01M15 12h.01"/></svg></div><div class="card-copy"><div class="card-label">Agent proposal · ${esc(p.agent||'agent')}</div><h3>${esc(m.body.replace(/^agent '.*?' proposed: /,''))}</h3><p>Validated against group rules before anything is written.</p></div></div><div class="card-actions"><button class="primary" onclick="confirmRun(${p.agent_run_id})">Confirm &amp; apply</button><button class="quiet" onclick="gotoView('agents')">Review</button></div></div>`;
@@ -3011,6 +3024,41 @@ window.delRecord = async (rid)=>{ if(!confirm('Delete this record?')) return; aw
 $('addRecordBtn').onclick = ()=>fillFirstForm();
 $('addTableRowBtn').onclick = ()=>fillFirstForm();
 $('importDataBtn').onclick = ()=>toast('CSV import: use Forms below for now');
+$('aiTableBtn').onclick = ()=>aiFlow('table');
+
+/* ---------- AI drafting: prompt → structured spec → confirm → create ---------- */
+const AI_HINTS = {
+  task: 'e.g. Night patrol Friday, pays 50, for verified couriers',
+  form: 'e.g. Signup: name, phone, shirt size',
+  schedule: 'e.g. Remind unpaid balances every evening at 6pm',
+  redirect: 'e.g. When someone accepts, send the QR instructions',
+  table: 'e.g. Sessions: tutor, topic, when',
+};
+function aiSummary(kind, s){
+  const li = (k,v)=>`<div><span style="color:var(--muted)">${k}:</span> <strong>${esc(v??'—')}</strong></div>`;
+  let h = '';
+  if (kind==='task') h = li('Title',s.title)+li('Details',s.description)+li('Payout',s.payout_text)+li('Tags',(s.audience_tags||[]).join(', '));
+  if (kind==='form') h = li('Title',s.title)+li('Fields',(s.fields||[]).map(f=>f.label).join(', '))+li('Multiple',s.allow_multiple?'yes':'once each');
+  if (kind==='schedule') h = li('Name',s.name)+li('When',s.kind+' '+(s.time_of_day||s.interval_seconds||s.cron_expr||''))+li('Does',s.action);
+  if (kind==='redirect') h = li('Name',s.name)+li('When',s.trigger_event)+li('Then',s.action)+li('Says',s.message);
+  if (kind==='table') h = li('Name',s.name)+li('Columns',(s.columns||[]).map(c=>c.label).join(', '));
+  return `<div style="font-size:13px;margin-bottom:8px">${h}</div><pre style="font:10.5px var(--mono);background:var(--surface);padding:8px;border-radius:6px;white-space:pre-wrap;max-height:160px;overflow:auto">${esc(JSON.stringify(s,null,1))}</pre>`;
+}
+window.aiFlow = async (kind)=>{
+  if ((kind==='schedule'||kind==='redirect'||kind==='table') && state.myRole!=='admin') return toast('Admins only');
+  const v = await ask('Describe the '+kind+' you want', [{label:'Prompt',type:'textarea',hint:AI_HINTS[kind]}], 'Draft with AI');
+  if (!v || !v[0]) return;
+  toast('Drafting…');
+  let draft;
+  try { draft = await api(`/api/groups/${state.groupId}/ai/propose`,{method:'POST',body:JSON.stringify({kind,prompt:v[0]})}); }
+  catch(e){ toast(e.message); return; }
+  const ok = await ask('AI draft · '+draft.model+(draft.warnings&&draft.warnings.length?' · fallback':''), [{type:'info',html:aiSummary(kind,draft.spec)}], 'Create it');
+  if (!ok) return;
+  try {
+    await api(`/api/groups/${state.groupId}/ai/apply`,{method:'POST',body:JSON.stringify({kind,spec:draft.spec})});
+    toast('Created ✓'); await refreshAll();
+  } catch(e){ toast('Rejected: '+e.message); }
+};
 async function fillFirstForm(){ if(!state.forms.length){ toast('No forms yet — create one in Forms'); showView('forms'); return; } openFormModal(state.forms[0].id); }
 
 /* ---------- tasks ---------- */
@@ -3018,22 +3066,28 @@ async function loadTasks(){ state.tasks = await api(`/api/groups/${state.groupId
 function renderTasks(){
   const grid = document.querySelector('#view-tasks .collection-grid'); if(!grid) return;
   if (!state.tasks.length){ grid.innerHTML = `<div class="empty-state">No tasks yet. Post one from chat: <code>/task Airport shift</code></div>`; return; }
-  grid.innerHTML = state.tasks.map(t=>`<article class="item-card"><div class="item-top"><div><h3>${esc(t.title)}</h3><p>${esc(t.description||'')} ${esc(t.payout_text||'')}</p><p style="color:var(--muted);font-size:11px">audience ${esc(JSON.stringify(t.audience||{}))}${t.rule_id?' · rule #'+t.rule_id:''}</p></div></div><div class="item-foot"><span class="tag ${t.status==='live'?'green':'yellow'}">${esc(t.status)}</span>${t.responded} of ${t.offered} responded</div><div style="display:flex;gap:6px;margin-top:8px"><button class="quiet" onclick="showOffers(${t.id})">Offers</button><button class="quiet" onclick="acceptFirst(${t.id})">Accept as me</button><button class="quiet" onclick="shareTaskCard(${t.id})">Share to chat</button></div><div id="off-${t.id}" style="margin-top:6px;font-size:12px"></div></article>`).join('');
+  grid.innerHTML = state.tasks.map(t=>`<article class="item-card"><div class="item-top"><div><h3>${esc(t.title)}</h3><p>${esc(t.description||'')} ${esc(t.payout_text||'')}</p><p style="color:var(--muted);font-size:11px">audience ${esc(JSON.stringify(t.audience||{}))}${t.rule_id?' · rule #'+t.rule_id:''}</p></div></div><div class="item-foot"><span class="tag ${t.status==='live'?'green':'yellow'}">${esc(t.status)}</span>${t.responded} of ${t.offered} responded</div><div style="display:flex;gap:6px;margin-top:8px"><button class="quiet" onclick="showOffers(${t.id})">Offers</button>${t.my_offer ? (t.my_offer.status==='accepted'||t.my_offer.status==='completed' ? `<button class="quiet" disabled>Accepted ✓</button>` : t.my_offer.status==='declined' ? `<button class="quiet" disabled>Declined</button>` : `<button class="quiet" onclick="acceptFirst(${t.id},this)">Accept as me</button>`) : `<button class="quiet" onclick="acceptFirst(${t.id},this)">Accept as me</button>`}<button class="quiet" onclick="shareTaskCard(${t.id})">Share to chat</button></div><div id="off-${t.id}" style="margin-top:6px;font-size:12px"></div></article>`).join('');
   const b=$('taskCountBadge'); if(b) b.textContent=state.tasks.length;
 }
 window.showOffers = async (tid)=>{
   const o = await api(`/api/tasks/${tid}/offers`);
   $('off-'+tid).innerHTML = o.map(x=>`${esc(x.member)} — <b>${x.status}</b> <button onclick="respondOffer(${x.id},'accept')">accept</button> <button onclick="respondOffer(${x.id},'decline')">decline</button>`).join('<br>') || 'No offers — eligibility rule/tags filtered everyone out.';
 };
-window.acceptFirst = async (tid)=>{
-  const o = await api(`/api/tasks/${tid}/offers`);
-  const mine = o.find(x=>x.member_id===state.memberId)||o[0];
-  if(!mine) return toast('No offer for you (rule/tags filtered you out)');
-  await respondOffer(mine.id,'accept');
+window.acceptFirst = async (tid, btn)=>{
+  if (btn){ btn.disabled = true; }
+  try {
+    const o = await api(`/api/tasks/${tid}/offers`);
+    const mine = o.find(x=>x.member_id===state.memberId)||o[0];
+    if(!mine){ toast('No offer for you (rule/tags filtered you out)'); return; }
+    if (mine.status==='accepted'||mine.status==='completed'){ toast('Already accepted ✓'); await loadTasks(); renderTasks(); return; }
+    await respondOffer(mine.id,'accept');
+  } finally { if (btn) btn.disabled = false; }
 };
-window.respondOffer = async (oid,dec)=>{
+window.respondOffer = async (oid,dec,btn)=>{
+  if (btn){ btn.disabled = true; }
   try{ await api(`/api/offers/${oid}/respond`,{method:'POST',body:JSON.stringify({decision:dec})}); toast(dec==='accept'?'Accepted ✓':'Declined'); await loadTasks(); renderTasks(); loadInbox(); }
   catch(e){ toast('Blocked: '+e.message); }
+  finally { if (btn) btn.disabled = false; }
 };
 /* Inline validation: reuse a rule from the dropdown or write one in plain words (admins). */
 function ruleFieldDefs(){
@@ -3069,32 +3123,43 @@ $('newTaskModalBtn').onclick = ()=>window.taskModalFlow();
 async function loadForms(){ state.forms = await api(`/api/groups/${state.groupId}/forms`); }
 function renderForms(){
   const grid = document.querySelector('#view-forms .collection-grid'); if(!grid) return;
-  grid.innerHTML = state.forms.length ? state.forms.map(f=>`<article class="item-card"><div class="item-top"><div><h3>${esc(f.title)}</h3><p>${esc(f.description||'')}</p><p style="font-size:11px;color:var(--muted)">${(f.fields||[]).length} fields → table ${f.table_id||'—'}${f.rule_id?' · rule #'+f.rule_id:''}</p></div></div><div class="item-foot"><span class="tag green">${esc(f.status)}</span>${f.responses} responses</div><div style="margin-top:8px;display:flex;gap:6px"><button class="primary" onclick="openFormModal(${f.id})">Fill form</button><button class="quiet" onclick="shareFormCard(${f.id})">Share to chat</button></div></article>`).join('')
+  grid.innerHTML = state.forms.length ? state.forms.map(f=>{
+    const done = (f.my_responses||0) > 0 && !f.allow_multiple;
+    const btn = done ? `<button class="primary" disabled>Submitted ✓</button>`
+      : `<button class="primary" onclick="openFormModal(${f.id},this)">${f.allow_multiple&&f.my_responses?`Submit again (${f.my_responses} in)`:'Fill form'}</button>`;
+    return `<article class="item-card"><div class="item-top"><div><h3>${esc(f.title)}</h3><p>${esc(f.description||'')}</p><p style="font-size:11px;color:var(--muted)">${(f.fields||[]).length} fields → table ${f.table_id||'—'}${f.rule_id?' · rule #'+f.rule_id:''}${f.allow_multiple?' · multiple allowed':''}</p></div></div><div class="item-foot"><span class="tag green">${esc(f.status)}</span>${f.responses} responses</div><div style="margin-top:8px;display:flex;gap:6px">${btn}<button class="quiet" onclick="shareFormCard(${f.id})">Share to chat</button></div></article>`;
+  }).join('')
     : `<div class="empty-state">No forms yet — create one to classify members and write structured rows.</div>`;
 }
-window.openFormModal = async (fid)=>{
+window.openFormModal = async (fid, btn)=>{
   const f = state.forms.find(x=>x.id===fid) || state.forms[0];
   if (!f) return toast('No forms yet');
-  const fields = (f.fields||[]).map(fld=>{
-    if (fld.type==='select') return {label:(fld.label||fld.name)+(fld.required?' *':''), type:'select', options:fld.options||[], value:(fld.options||[])[0]};
-    return {label:(fld.label||fld.name)+(fld.required?' *':''), type:'text', hint:fld.type||'text'};
-  });
-  const v = await ask(f.title, fields.length?fields:[{label:'Answer *'}], 'Submit');
-  if (!v) return;
-  const data = {};
-  (f.fields||[]).forEach((fld,i)=>{ data[fld.name] = v[i] ?? ''; });
-  if (!(f.fields||[]).length) data.answer = v[0];
-  try{ await api(`/api/forms/${f.id}/submit`,{method:'POST',body:JSON.stringify({data})}); toast('Submitted ✓ validated'); refreshAll(); }
-  catch(e){ toast('Rejected: '+e.message); }
+  if ((f.my_responses||0) > 0 && !f.allow_multiple) return toast('Already submitted ✓');
+  if (btn) btn.disabled = true;
+  try {
+    const fields = (f.fields||[]).map(fld=>{
+      if (fld.type==='select') return {label:(fld.label||fld.name)+(fld.required?' *':''), type:'select', options:fld.options||[], value:(fld.options||[])[0]};
+      return {label:(fld.label||fld.name)+(fld.required?' *':''), type:'text', hint:fld.type||'text'};
+    });
+    const v = await ask(f.title, fields.length?fields:[{label:'Answer *'}], 'Submit');
+    if (!v) return;
+    const data = {};
+    (f.fields||[]).forEach((fld,i)=>{ data[fld.name] = v[i] ?? ''; });
+    if (!(f.fields||[]).length) data.answer = v[0];
+    try{ await api(`/api/forms/${f.id}/submit`,{method:'POST',body:JSON.stringify({data})}); toast('Submitted ✓ validated'); refreshAll(); }
+    catch(e){ toast('Rejected: '+e.message); }
+  } finally { if (btn) btn.disabled = false; }
 };
 window.formBuilderFlow = async ()=>{
   const tables = (state.tablesFull||[]).map(t=>`${t.id}: ${t.name}`).join('\n');
-  const v = await ask('New form', [{label:'Title',hint:'e.g. Shift completion'},{label:'Writes to table id',hint:tables},{label:'Fields (one label per line)',type:'textarea',hint:'Full name\nLicense number'}].concat(ruleFieldDefs()), 'Share in chat');
+  const v = await ask('New form', [{label:'Title',hint:'e.g. Shift completion'},{label:'Writes to table id',hint:tables},{label:'Fields (one label per line)',type:'textarea',hint:'Full name\nLicense number'}].concat(ruleFieldDefs()).concat([{label:'Responses',type:'select',options:['One per member','Multiple allowed']}]), 'Share in chat');
   if (!v||!v[0]) return;
+  const nRule = ruleFieldDefs().length;
   const ruleId = await resolveRule(v[3], state.myRole==='admin'?v[4]:'');
   if (ruleId==='BLOCK') return;
+  const multi = v[3+nRule] === 'Multiple allowed';
   const fields = (v[2]||'Answer').split('\n').map(s=>s.trim()).filter(Boolean).map(s=>({name:s.toLowerCase().replace(/[^a-z0-9]+/g,'_'),label:s,type:'text',required:true}));
-  await api(`/api/groups/${state.groupId}/forms`,{method:'POST',body:JSON.stringify({title:v[0],table_id:v[1]?+v[1]:state.activeTable?.id,fields,rule_id:ruleId})});
+  await api(`/api/groups/${state.groupId}/forms`,{method:'POST',body:JSON.stringify({title:v[0],table_id:v[1]?+v[1]:state.activeTable?.id,fields,rule_id:ruleId,allow_multiple:multi})});
   await loadForms(); renderForms(); await loadMessages(true);
   toast('Form shared in chat');
 };

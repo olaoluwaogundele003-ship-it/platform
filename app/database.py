@@ -39,5 +39,12 @@ def init_db():
         with engine.begin() as c:
             if "prefs" not in mcols:
                 c.execute(text("ALTER TABLE memberships ADD COLUMN prefs JSON"))
+        try:
+            fcols = _columns("forms")
+            with engine.begin() as c:
+                if "allow_multiple" not in fcols:
+                    c.execute(text("ALTER TABLE forms ADD COLUMN allow_multiple BOOLEAN DEFAULT 0"))
+        except Exception:
+            pass
     except Exception:
         pass

@@ -126,6 +126,7 @@ class FormDef(Base):
     fields = Column(JSON, default=list)  # [{name,label,type,required,options}]
     rule_id = Column(Integer, ForeignKey("rules.id", ondelete="SET NULL"), nullable=True)
     status = Column(String(16), default="published")
+    allow_multiple = Column(Boolean, default=False)  # False: one member, one submission
     created_at = Column(DateTime, default=utcnow)
 
 
