@@ -589,7 +589,7 @@ def submit_form(fid: int, body: dict, user: models.User = Depends(get_current_us
              ("city", "fleet", "availability", "rating", "verification", "transport_mode", "skills", "stake_balance", "full_name", "phone")}
     if patch:
         member.profile = {**prof, **patch}
-    post_message(db, f.group_id, f"{member.display_name} submitted '{f.title}'.", kind="form",
+    post_message(db, f.group_id, f"{member.display_name} submitted '{f.title}'.", kind="form", author=member.display_name,
                  member_id=member.id, payload={"form_id": fid})
     push_inbox(db, f.group_id, f"Form accepted: {f.title}", f"{member.display_name}'s submission passed validation.",
                kind="form", member_id=member.id, ref_type="form", ref_id=fid)
@@ -713,7 +713,8 @@ def respond_offer(oid: int, body: dict, user: models.User = Depends(get_current_
         o.response_text = body.get("response_text", "")
         o.responded_at = utcnow().replace(tzinfo=None)
         if m and t:
-            post_message(db, t.group_id, f"{m.display_name} accepted '{t.title}'.", kind="task", member_id=m.id)
+            post_message(db, t.group_id, f"{m.display_name} accepted '{t.title}'.", kind="task",
+                         author=m.display_name, member_id=m.id)
             push_inbox(db, t.group_id, f"Accepted: {t.title}", "Your acceptance is registered.", kind="task", member_id=m.id, ref_type="task", ref_id=t.id)
             if t.write_table_id:
                 db.add(models.Record(table_id=t.write_table_id, group_id=t.group_id, member_ref_id=m.id,
@@ -1076,14 +1077,30 @@ def generate_view(gid: int, body: dict, user: models.User = Depends(get_current_
         table = db.query(models.TableDef).filter_by(group_id=gid, key=planned["table_key"]).first()
     table = table or tables[0]
     cols = (planned or {}).get("columns") or [c.get("name") for c in (table.columns or [])][:5]
-    filt = (planned or {}).get("filter") or {}
+    filt = (planned or {}).get("filter") if isinstance((planned or {}).get("filter"), dict) else {}
+    template = (planned or {}).get("template", "table")
+    summary = (planned or {}).get("summary", "")
     v = models.PageView(group_id=gid, title=body.get("title") or f"View: {prompt[:40]}",
-                        description=f"Generated from '{prompt}' ({model_used})",
+                        description=summary or f"Generated from '{prompt}' ({model_used})",
                         source_table_id=table.id, columns=cols, filter=filt,
-                        template=(planned or {}).get("template", "table"))
+                        template=template)
     db.add(v)
     db.commit()
-    return {"id": v.id, "table_key": table.key, "columns": cols, "filter": filt, "model": model_used}
+    return {"id": v.id, "table_key": table.key, "columns": cols, "filter": filt,
+            "template": template, "summary": summary, "model": model_used}
+
+
+@app.post("/api/views/{vid}/insight")
+def view_insight(vid: int, user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """AI reads the dashboard and says what stands out + what to do next."""
+    from app.ai import ai_view_insight
+    v = db.query(models.PageView).filter_by(id=vid).first()
+    if not v:
+        raise HTTPException(404, "view not found")
+    me_in(db, v.group_id, user)
+    rows = compute_view_rows(db, v)
+    insight, model = ai_view_insight(v.title, v.columns or [], rows)
+    return {"insight": insight, "model": model, "rows": len(rows)}
 
 
 @app.get("/api/views/{vid}/rows")

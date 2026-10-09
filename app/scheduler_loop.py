@@ -92,10 +92,12 @@ def run_schedule_once(db, sched):
             if not task:
                 task = db.query(models.TaskDef).filter_by(group_id=gid, status="live").first()
             if task:
-                # quiet pulses only speak when they actually reach someone new
                 from app.workflows import member_name as _mn
-                n = create_offers_for_task(db, task, announce=not cfg.get("quiet"),
-                                           author=_mn(db, gid, task.created_by))
+                who = _mn(db, gid, task.created_by)
+                n = create_offers_for_task(db, task, announce=False, author=who)
+                if n > 0 and not cfg.get("quiet"):
+                    post_message(db, gid, f"matched '{task.title}' to {n} new eligible member(s).",
+                                 kind="task", author=who, payload={"task_id": task.id, "offered": n})
                 detail.update({"task_id": task.id, "offered": n})
             else:
                 detail["note"] = "no live task to match"

@@ -3249,7 +3249,7 @@ function renderViews(){
     <div class="stat-card"><strong>${d.records??'—'}</strong><span>records</span></div>
     <div class="stat-card"><strong>${d.schedules??'—'}</strong><span>schedules</span></div></div>`;
   const grid = sec.querySelector('.collection-grid');
-  grid.innerHTML = state.views.map(v=>`<article class="item-card"><div><h3>${esc(v.title)}</h3><p>${esc(v.description||'')}</p><p style="font-size:11px;color:var(--muted)">${v.stat?.rows??'?'} rows${v.stat?.avg!=null?' · avg '+v.stat.avg:''} · ${esc(v.template)}</p></div><div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap"><button class="quiet" onclick="openView(${v.id})">Open dashboard</button><button class="quiet" onclick="shareView(${v.id})">Share to chat</button><button class="quiet" onclick="publishView(${v.id})">Publish page</button>${state.myRole==='admin'?`<button class="quiet" onclick="editView(${v.id})">Edit</button><button class="quiet" onclick="delView(${v.id})">Delete</button>`:''}</div><div id="vw-${v.id}" style="margin-top:6px;font-size:12px;overflow-x:auto"></div></article>`).join('')
+  grid.innerHTML = state.views.map(v=>`<article class="item-card"><div><h3>${esc(v.title)}</h3><p>${esc(v.description||'')}</p><p style="font-size:11px;color:var(--muted)">${v.stat?.rows??'?'} rows${v.stat?.avg!=null?' · avg '+v.stat.avg:''} · ${esc(v.template)}</p></div><div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap"><button class="quiet" onclick="openView(${v.id})">Open dashboard</button><button class="quiet" onclick="shareView(${v.id})">Share to chat</button><button class="quiet" onclick="publishView(${v.id})">Publish page</button><button class="quiet" onclick="viewInsight(${v.id})">Insight</button>${state.myRole==='admin'?`<button class="quiet" onclick="editView(${v.id})">Edit</button><button class="quiet" onclick="delView(${v.id})">Delete</button>`:''}</div><div id="vw-${v.id}" style="margin-top:6px;font-size:12px;overflow-x:auto"></div></article>`).join('')
     + `<article class="item-card"><h3>Generate with AI</h3><p>Describe the slice you want to see.</p><input id="genPrompt" placeholder="verified drivers in Lagos" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px"><button class="primary" style="margin-top:8px" onclick="genView()">Generate</button></article>`;
 }
 window.editView = async (vid)=>{
@@ -3265,9 +3265,40 @@ window.delView = async (vid)=>{
 };
 window.openView = async (vid)=>{
   const d = await api(`/api/views/${vid}/rows`);
-  $('vw-'+vid).innerHTML = d.rows.length
-    ? `<table class="sheet"><thead><tr>${Object.keys(d.rows[0]).map(k=>`<th>${esc(k)}</th>`).join('')}</tr></thead><tbody>${d.rows.slice(0,8).map(r=>`<tr>${Object.values(r).map(v=>`<td>${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table>${d.rows.length>8?`<p style="color:var(--muted)">+${d.rows.length-8} more rows</p>`:''}`
-    : 'No rows match this filter.';
+  const box = $('vw-'+vid);
+  const rows = d.rows||[];
+  const t = (d.view||{}).template||'table';
+  if (!rows.length){ box.innerHTML = 'No rows match this filter.'; return; }
+  const esc2 = esc;
+  if (t==='roster'){
+    box.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px">`+
+      rows.slice(0,12).map(r=>{ const keys = Object.keys(r).filter(k=>!k.startsWith('_')); const name = r._member && r._member!=='—' ? r._member : (r[keys[0]]??''); const rest = keys.filter(k=>k!=='name').slice(0,3).map(k=>`<div style="font-size:11px;color:var(--muted)">${esc2(k)}: <b style="color:var(--ink)">${esc2(r[k])}</b></div>`).join(''); return `<div style="border:1px solid var(--border);border-radius:8px;padding:10px"><div class="avatar" style="width:28px;height:28px;margin-bottom:6px">${esc2(String(name).slice(0,2).toUpperCase())}</div><strong style="font-size:12.5px">${esc2(name)}</strong>${rest}</div>`; }).join('')+`</div>${rows.length>12?`<p style="color:var(--muted)">+${rows.length-12} more</p>`:''}`;
+    return;
+  }
+  const statusKey = Object.keys(rows[0]).find(k=>k.toLowerCase()==='status');
+  if ((t==='dispatch_board'||t==='job_board') && statusKey){
+    const groups = {};
+    rows.forEach(r=>{ const k = String(r[statusKey]??'other'); (groups[k]=groups[k]||[]).push(r); });
+    box.innerHTML = `<div style="display:flex;gap:8px;overflow-x:auto">`+Object.entries(groups).map(([k,rs])=>`<div style="min-width:170px;flex:1;background:var(--surface);border-radius:8px;padding:8px"><strong style="font-size:11px;text-transform:uppercase;color:var(--muted)">${esc2(k)} · ${rs.length}</strong>`+rs.slice(0,6).map(r=>{ const title = r.title||r.item||r.name||r.package||('#'+r._record_id); return `<div style="background:var(--paper);border:1px solid var(--border);border-radius:6px;padding:6px 8px;margin-top:6px;font-size:12px">${esc2(title)}</div>`; }).join('')+`</div>`).join('')+`</div>`;
+    return;
+  }
+  if (t==='funnel'){
+    const counts = {};
+    const key = statusKey || Object.keys(rows[0]).find(k=>!k.startsWith('_')&&typeof rows[0][k]==='string') || 'status';
+    rows.forEach(r=>{ const k = String(r[key]??'other'); counts[k]=(counts[k]||0)+1; });
+    const mx = Math.max(...Object.values(counts));
+    box.innerHTML = Object.entries(counts).map(([k,n])=>`<div style="display:flex;align-items:center;gap:8px;margin:6px 0;font-size:12px"><span style="width:110px">${esc2(k)}</span><div style="flex:1;background:var(--surface);border-radius:99px;height:12px"><div style="width:${Math.max(4,Math.round(100*n/mx))}%;background:var(--brand);height:12px;border-radius:99px"></div></div><strong>${n}</strong></div>`).join('');
+    return;
+  }
+  box.innerHTML = `<table class="sheet"><thead><tr>${Object.keys(rows[0]).map(k=>`<th>${esc2(k)}</th>`).join('')}</tr></thead><tbody>${rows.slice(0,8).map(r=>`<tr>${Object.values(r).map(v=>`<td>${esc2(v)}</td>`).join('')}</tr>`).join('')}</tbody></table>${rows.length>8?`<p style="color:var(--muted)">+${rows.length-8} more rows</p>`:''}`;
+};
+window.viewInsight = async (vid)=>{
+  const box = $('vw-'+vid);
+  box.innerHTML = '<span style="color:var(--muted)">Reading the dashboard…</span>';
+  try {
+    const r = await api(`/api/views/${vid}/insight`,{method:'POST',body:'{}'});
+    box.innerHTML = `<div style="border-left:3px solid var(--brand);background:var(--surface);border-radius:0 6px 6px 0;padding:8px 10px;font-size:12.5px">✨ ${esc(r.insight)}<div style="font-size:10.5px;color:var(--muted);margin-top:4px">via ${esc(r.model)} · ${r.rows} rows</div></div>`;
+  } catch(e){ box.innerHTML = 'Could not read it: '+esc(e.message); }
 };
 window.genView = async ()=>{
   const p = $('genPrompt').value; if(!p) return;

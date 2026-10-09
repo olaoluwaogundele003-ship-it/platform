@@ -255,11 +255,11 @@ def ai_compile_rule(natural_language, schema_context=""):
 
 
 def ai_plan_view(natural_language, tables_snapshot):
-    """Turn 'show me verified drivers in Lagos' into {table_key, filter, columns}."""
+    """Turn a request into {table_key, filter, columns, template, summary}."""
     system = (
         "You map a natural-language view request to a structured query. "
         "Respond with ONLY JSON: {\"table_key\":string,\"filter\":{\"field\":string,\"op\":string,\"value\":any},"
-        "\"columns\":[string],\"template\":string}. Keep it simple."
+        "\"columns\":[string],\"template\":one of table|roster|dispatch_board|funnel|job_board,\"summary\":string (one lively sentence on what this view shows and why it matters)}. Pick roster for people, dispatch_board for work grouped by status, funnel for progress, job_board for opportunities, table otherwise. Keep it simple."
     )
     text = _chat(
         [{"role": "system", "content": system},
@@ -268,9 +268,60 @@ def ai_plan_view(natural_language, tables_snapshot):
     )
     if text:
         planned = extract_json(text, "filter")
-        if planned:
+        if planned and _valid_view_plan(planned):
             return planned, AI_MODELS["plan"]
-    return None, "local"
+    return _local_view_plan(natural_language), "local"
+
+
+def _valid_view_plan(p):
+    if not isinstance(p, dict) or not isinstance(p.get("columns"), list):
+        return False
+    if p.get("template") not in ("table", "roster", "dispatch_board", "funnel", "job_board"):
+        p["template"] = "table"
+    if not isinstance(p.get("summary"), str):
+        p["summary"] = ""
+    if not isinstance(p.get("filter"), dict):
+        p["filter"] = {}
+    return True
+
+
+def _local_view_plan(natural_language):
+    t = (natural_language or "").lower()
+    if any(k in t for k in ("roster", "member", "driver", "courier", "team")):
+        template = "roster"
+    elif any(k in t for k in ("dispatch", "deliver", "order", "board")):
+        template = "dispatch_board"
+    elif any(k in t for k in ("funnel", "progress", "pipeline")):
+        template = "funnel"
+    elif any(k in t for k in ("job", "opportunit", "gig", "opening")):
+        template = "job_board"
+    else:
+        template = "table"
+    return {"table_key": "", "filter": {}, "columns": [], "template": template,
+            "summary": "Live slice of the group tables."}
+
+
+def ai_view_insight(view_title, columns, rows):
+    tiny = [{k: r.get(k) for k in columns[:6]} for r in rows[:25]]
+    nums = [x for r in tiny for x in r.values() if isinstance(x, (int, float))]
+    fallback = "%d row(s)%s." % (len(rows), (", average %s" % ("{:,.1f}".format(sum(nums) / len(nums)))) if nums else "")
+    system = (
+        "You read a dashboard snapshot and write exactly two short sentences: "
+        "what stands out, and what the group should do next. Use ONLY numbers present "
+        "in the rows. No markdown, no advice beyond the data. Respond with ONLY JSON: "
+        '{"insight":string}.'
+    )
+    text = _chat(
+        [{"role": "system", "content": system},
+         {"role": "user", "content": "Dashboard %r, columns %s, rows: %s" % (
+             view_title[:80], ", ".join(columns[:6]), json.dumps(tiny)[:1500])}],
+        "plan", max_tokens=250, temperature=0.3,
+    )
+    if text:
+        got = extract_json(text, "insight")
+        if isinstance(got, dict) and isinstance(got.get("insight"), str) and got["insight"].strip():
+            return got["insight"].strip()[:400], AI_MODELS["plan"]
+    return fallback, "local-deterministic"
 
 
 def ai_agent_brain(kind, profile, context=""):
