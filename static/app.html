@@ -1,0 +1,3344 @@
+<!doctype html>
+<html lang="en" class="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f7f6f3">
+  <title>Platform — Driver Network Workspace</title>
+  <link rel="icon" href="/static/logo.jpeg">
+  
+  <!-- Typography: Inter / Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      /* Clean Notion Aesthetic - Light Theme */
+      --bg: #f7f6f3;
+      --paper: #ffffff;
+      --surface: #f1f0ec;
+      --surface-hover: #e9e8e3;
+      --side: #f7f6f3;
+      --border: #e9e8e4;
+      --border-strong: #d3d1cb;
+      
+      --ink: #37352f;
+      --ink-secondary: #6f6e69;
+      --muted: #9b9a97;
+      
+      --brand: #2383e2;
+      --brand-hover: #1d6fc2;
+      --brand-light: #e7f3f8;
+      --brand-border: #b3d7f0;
+      
+      /* Notion Tag Tints */
+      --tag-gray-bg: #f1f1ef; --tag-gray-fg: #5a5a58;
+      --tag-brown-bg: #f4eee0; --tag-brown-fg: #603b2c;
+      --tag-orange-bg: #faecdd; --tag-orange-fg: #854c1d;
+      --tag-yellow-bg: #fbf3db; --tag-yellow-fg: #89632a;
+      --tag-green-bg: #edf3ec; --tag-green-fg: #2b593f;
+      --tag-blue-bg: #e7f3f8; --tag-blue-fg: #28456c;
+      --tag-purple-bg: #f3f0f5; --tag-purple-fg: #49297e;
+      --tag-pink-bg: #f9ecee; --tag-pink-fg: #69314c;
+      --tag-red-bg: #fdebec; --tag-red-fg: #6e3030;
+      
+      --shadow-sm: 0 1px 3px rgba(15, 15, 15, 0.05);
+      --shadow-md: 0 4px 12px rgba(15, 15, 15, 0.08);
+      --shadow-lg: 0 12px 32px rgba(15, 15, 15, 0.12);
+      
+      --radius-sm: 4px;
+      --radius-md: 6px;
+      --radius-lg: 8px;
+      --radius-xl: 12px;
+      
+      --sans: "Inter", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --mono: "JetBrains Mono", monospace;
+    }
+
+    html.dark {
+      /* Clean Notion Aesthetic - Dark Theme */
+      --bg: #191919;
+      --paper: #202020;
+      --surface: #252525;
+      --surface-hover: #2c2c2c;
+      --side: #191919;
+      --border: #2f2f2f;
+      --border-strong: #3f3f3f;
+      
+      --ink: rgba(255, 255, 255, 0.81);
+      --ink-secondary: rgba(255, 255, 255, 0.6);
+      --muted: rgba(255, 255, 255, 0.4);
+      
+      --brand: #529cca;
+      --brand-hover: #4387b3;
+      --brand-light: #1f2d3d;
+      --brand-border: #2c4257;
+      
+      --tag-gray-bg: #2d2d2d; --tag-gray-fg: #a4a4a4;
+      --tag-brown-bg: #3a2e2b; --tag-brown-fg: #d2a193;
+      --tag-orange-bg: #3e2e1e; --tag-orange-fg: #e2ad71;
+      --tag-yellow-bg: #39331e; --tag-yellow-fg: #dfc875;
+      --tag-green-bg: #24352a; --tag-green-fg: #8ccf9f;
+      --tag-blue-bg: #1f313e; --tag-blue-fg: #8bbde3;
+      --tag-purple-bg: #32253d; --tag-purple-fg: #c4a1e0;
+      --tag-pink-bg: #3d222e; --tag-pink-fg: #e8a2be;
+      --tag-red-bg: #3e2222; --tag-red-fg: #e39191;
+      
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+      --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+      --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--ink);
+      font: 14px/1.5 var(--sans);
+      letter-spacing: -0.01em;
+      transition: background-color 0.2s, color 0.2s;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button, input, textarea, select { font: inherit; color: inherit; }
+    button { cursor: pointer; border: 0; background: transparent; }
+    
+    /* Icon Sizing Fixes */
+    svg.icon {
+      width: 16px;
+      height: 16px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      flex-shrink: 0;
+      display: inline-block;
+      vertical-align: middle;
+      overflow: visible !important;
+    }
+    svg.icon-sm { width: 14px; height: 14px; }
+    svg.icon-lg { width: 20px; height: 20px; }
+
+    :focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+
+    /* App Layout */
+    .app {
+      height: 100dvh;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .shell {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+      overflow: hidden;
+      background: var(--paper);
+    }
+
+    /* Sidebar - Notion Style Sidebar */
+    .sidebar {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      background: var(--side);
+      border-right: 1px solid var(--border);
+      position: relative;
+      z-index: 40;
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .sidebar-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 35;
+      background: rgba(0, 0, 0, 0.4);
+      display: none;
+    }
+    .sidebar-backdrop.show { display: block; }
+
+    .workspace {
+      height: 52px;
+      padding: 0 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo {
+      width: 24px;
+      height: 24px;
+      display: grid;
+      place-items: center;
+      border-radius: var(--radius-sm);
+      color: var(--ink);
+      background: var(--surface-hover);
+      border: 1px solid var(--border-strong);
+      font: 700 13px var(--sans);
+      object-fit: cover;
+      padding: 0;
+    }
+    html.dark .logo { filter: invert(1); }
+    .auth-logo { width: 72px; height: 72px; border-radius: 16px; object-fit: cover; }
+    html.dark .auth-logo { filter: invert(1); }
+
+    .workspace-copy { min-width: 0; flex: 1; }
+    .workspace-copy strong { display: block; font: 600 13px var(--sans); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .workspace-copy span { color: var(--muted); font-size: 11px; font-weight: 500; }
+
+    .icon-btn {
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius-sm);
+      color: var(--ink-secondary);
+      flex-shrink: 0;
+      transition: background-color 0.15s, color 0.15s;
+    }
+    .icon-btn:hover { color: var(--ink); background: var(--surface-hover); }
+
+    .side-tabs {
+      margin: 8px 10px 4px;
+      padding: 2px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+
+    .side-tab {
+      height: 28px;
+      border-radius: var(--radius-sm);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    .side-tab.active {
+      color: var(--ink);
+      background: var(--paper);
+      box-shadow: var(--shadow-sm);
+      font-weight: 600;
+    }
+
+    .search {
+      position: relative;
+      margin: 4px 10px 8px;
+    }
+    .search svg {
+      position: absolute;
+      left: 10px;
+      top: 9px;
+      color: var(--muted);
+      pointer-events: none;
+    }
+    .search input {
+      width: 100%;
+      height: 32px;
+      padding: 0 28px 0 32px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      outline: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-size: 12px;
+      transition: border-color 0.15s;
+    }
+    .search input:focus { border-color: var(--brand); }
+    .search .kbd-shortcut {
+      position: absolute;
+      right: 6px;
+      top: 6px;
+      padding: 2px 5px;
+      border-radius: 3px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font: 500 10px var(--mono);
+    }
+
+    .section-label {
+      padding: 8px 14px 4px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .sidebar-pane { min-height: 0; flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .sidebar-pane.hidden { display: none; }
+
+    .chats, .inbox-feed {
+      min-height: 0;
+      flex: 1;
+      padding: 2px 6px;
+      overflow-y: auto;
+    }
+
+    .chat-item {
+      width: 100%;
+      min-height: 36px;
+      padding: 6px 8px;
+      display: grid;
+      grid-template-columns: 20px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+      border-radius: var(--radius-sm);
+      text-align: left;
+      margin-bottom: 1px;
+      transition: background-color 0.12s;
+    }
+    .chat-item:hover { background: var(--surface-hover); }
+    .chat-item.active { background: var(--surface-hover); font-weight: 600; }
+
+    .group-avatar, .avatar {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+      font-size: 11px;
+      width: 20px;
+      height: 20px;
+      background: var(--tag-gray-bg);
+      color: var(--tag-gray-fg);
+    }
+
+    .chat-copy { min-width: 0; }
+    .chat-title { display: block; font-size: 13px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .chat-preview { color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: none; }
+    .chat-meta { color: var(--muted); font-size: 10px; text-align: right; }
+    
+    .badge {
+      padding: 1px 5px;
+      border-radius: 99px;
+      color: var(--brand);
+      background: var(--brand-light);
+      font-size: 10px;
+      font-weight: 600;
+    }
+
+    /* Inbox Item in Sidebar */
+    .inbox-card {
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--paper);
+      margin-bottom: 6px;
+    }
+    .inbox-card h4 { margin: 0 0 2px; font-size: 12px; font-weight: 600; color: var(--ink); }
+    .inbox-card p { margin: 0; font-size: 11px; color: var(--ink-secondary); line-height: 1.35; }
+    .inbox-card time { display: block; margin-top: 4px; font-size: 10px; color: var(--muted); }
+
+    .profile {
+      height: 48px;
+      margin-top: auto;
+      padding: 0 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-top: 1px solid var(--border);
+      background: var(--side);
+    }
+    .profile .avatar { width: 22px; height: 22px; background: var(--tag-blue-bg); color: var(--tag-blue-fg); }
+    .profile-copy { flex: 1; min-width: 0; }
+    .profile-copy strong { display: block; font-size: 12px; font-weight: 600; color: var(--ink); }
+    .profile-copy span { color: var(--muted); font-size: 10px; }
+
+    /* Main Content */
+    .main {
+      position: relative;
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      background: var(--paper);
+    }
+
+    .topbar {
+      height: 52px;
+      flex-shrink: 0;
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+      background: var(--paper);
+    }
+
+    .mobile-menu { display: none; }
+
+    .group-head {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .group-name strong { display: block; font: 600 14px var(--sans); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .group-name span { display: flex; align-items: center; gap: 4px; color: var(--muted); font-size: 11px; }
+    .online { width: 6px; height: 6px; border-radius: 50%; background: #2b593f; display: inline-block; }
+
+    .mode-nav {
+      height: 32px;
+      padding: 2px;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      margin-left: auto;
+      margin-right: 0;
+    }
+    .mode-btn {
+      height: 26px;
+      padding: 0 10px;
+      border-radius: var(--radius-sm);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.12s;
+      white-space: nowrap;
+    }
+    .mode-btn:hover { color: var(--ink); }
+    .mode-btn.active {
+      color: var(--ink);
+      background: var(--paper);
+      box-shadow: var(--shadow-sm);
+      font-weight: 600;
+    }
+    .mode-btn .count {
+      padding: 1px 4px;
+      border-radius: 3px;
+      background: var(--surface-hover);
+      color: var(--ink-secondary);
+      font-size: 10px;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .soft-btn {
+      height: 30px;
+      padding: 0 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--paper);
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 500;
+      transition: background-color 0.12s;
+    }
+    .soft-btn:hover { background: var(--surface-hover); }
+
+    /* Views */
+    .view { display: none; min-height: 0; flex: 1; }
+    .view.active { display: flex; }
+
+    /* Conversation View */
+    .chat-view {
+      position: relative;
+      flex-direction: column;
+      background: var(--paper);
+    }
+
+    .chat-scroll {
+      min-height: 0;
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px max(20px, calc((100% - 720px) / 2));
+      scroll-behavior: smooth;
+    }
+
+    .date {
+      width: max-content;
+      margin: 0 auto 20px;
+      padding: 2px 10px;
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .message {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+    .message.mine { justify-content: flex-end; }
+    .message.mine .message-content { align-items: flex-end; }
+
+    .message-content {
+      max-width: min(560px, calc(100% - 36px));
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .message-meta {
+      margin: 0 2px 3px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .message-meta strong { font-size: 12px; font-weight: 600; color: var(--ink); }
+    .message-meta span { color: var(--muted); font-size: 11px; }
+
+    .bubble {
+      padding: 10px 14px;
+      border-radius: var(--radius-md);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--ink);
+      font-size: 13.5px;
+      line-height: 1.5;
+    }
+    .mine .bubble {
+      background: var(--brand-light);
+      border-color: var(--brand-border);
+      color: var(--ink);
+    }
+    .bubble p { margin: 0; }
+    .bubble p + p { margin-top: 6px; }
+    .mention { color: var(--brand); font-weight: 600; background: rgba(35, 131, 226, 0.1); padding: 1px 4px; border-radius: 3px; }
+
+    .system {
+      width: max-content;
+      max-width: 90%;
+      margin: 16px auto;
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+      color: var(--muted);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      font-size: 11px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Notion Style Cards */
+    .gentle-card {
+      width: min(480px, 100%);
+      margin-top: 8px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--paper);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .card-main { padding: 12px 14px; display: flex; gap: 12px; }
+    .card-icon {
+      width: 32px;
+      height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      border-radius: var(--radius-sm);
+      color: var(--brand);
+      background: var(--brand-light);
+    }
+
+    .card-copy { min-width: 0; flex: 1; }
+    .card-label { color: var(--muted); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+    .card-copy h3 { margin: 2px 0 3px; font: 600 13.5px var(--sans); color: var(--ink); }
+    .card-copy p { margin: 0; color: var(--ink-secondary); font-size: 12px; }
+
+    .card-status {
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border-top: 1px solid var(--border);
+      color: var(--ink-secondary);
+      background: var(--surface);
+      font-size: 11px;
+    }
+
+    .card-actions {
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-top: 1px solid var(--border);
+    }
+
+    .primary {
+      height: 32px;
+      padding: 0 12px;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      color: #ffffff;
+      background: var(--brand);
+      font-size: 12px;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: background-color 0.12s;
+    }
+    .primary:hover { background: var(--brand-hover); }
+
+    .quiet {
+      height: 32px;
+      padding: 0 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--paper);
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 500;
+      transition: background-color 0.12s;
+    }
+    .quiet:hover { background: var(--surface-hover); }
+
+    .audience { margin-left: auto; color: var(--muted); font-size: 11px; }
+
+    .query {
+      width: min(480px, 100%);
+      margin-top: 8px;
+      padding: 10px 12px;
+      border-radius: var(--radius-md);
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+    .query-line {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--ink-secondary);
+      font: 500 11px var(--mono);
+    }
+    .query-results { margin-top: 8px; display: flex; gap: 20px; }
+    .query-results strong { display: block; font: 600 15px var(--sans); color: var(--ink); }
+    .query-results span { color: var(--muted); font-size: 11px; }
+
+    /* Composer Input */
+    .composer-wrap {
+      flex-shrink: 0;
+      padding: 10px max(16px, calc((100% - 720px) / 2)) 14px;
+      background: var(--paper);
+      border-top: 1px solid var(--border);
+    }
+
+    .composer {
+      min-height: 48px;
+      padding: 6px 8px 6px 12px;
+      display: flex;
+      align-items: flex-end;
+      gap: 6px;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-md);
+      background: var(--paper);
+      box-shadow: var(--shadow-sm);
+    }
+    .composer:focus-within { border-color: var(--brand); }
+
+    .composer textarea {
+      min-height: 34px;
+      max-height: 120px;
+      flex: 1;
+      padding: 6px 2px;
+      resize: none;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--ink);
+      font-size: 13.5px;
+      line-height: 1.4;
+    }
+    .composer textarea::placeholder { color: var(--muted); }
+
+    .compose-btn {
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      border-radius: var(--radius-sm);
+      color: var(--muted);
+      transition: background-color 0.12s, color 0.12s;
+    }
+    .compose-btn:hover { color: var(--ink); background: var(--surface-hover); }
+    .compose-btn.send { color: #ffffff; background: var(--brand); }
+    .compose-btn.send:hover { background: var(--brand-hover); }
+
+    .create-menu {
+      position: absolute;
+      z-index: 20;
+      left: max(16px, calc((100% - 720px) / 2));
+      bottom: 74px;
+      width: 250px;
+      padding: 6px;
+      display: none;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--paper);
+      box-shadow: var(--shadow-md);
+    }
+    .create-menu.show { display: block; }
+
+    .create-option {
+      width: 100%;
+      padding: 8px 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-radius: var(--radius-sm);
+      text-align: left;
+    }
+    .create-option:hover { background: var(--surface-hover); }
+    .create-option strong { display: block; font-size: 12.5px; font-weight: 600; color: var(--ink); }
+    .create-option span { display: block; color: var(--muted); font-size: 11px; }
+
+    /* Data Table View */
+    .data-view {
+      flex-direction: column;
+      background: var(--paper);
+    }
+
+    .data-head {
+      height: 52px;
+      flex-shrink: 0;
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .data-head h2 { margin: 0; font: 600 15px var(--sans); color: var(--ink); }
+    .data-head p { margin: 0; color: var(--muted); font-size: 11px; margin-left: 10px; }
+    .data-actions { margin-left: auto; display: flex; gap: 6px; }
+
+    .table-tabs {
+      height: 38px;
+      flex-shrink: 0;
+      padding: 0 12px;
+      display: flex;
+      align-items: flex-end;
+      gap: 2px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      overflow-x: auto;
+    }
+
+    .table-tab {
+      height: 32px;
+      padding: 0 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid transparent;
+      border-bottom: 0;
+      border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .table-tab:hover { color: var(--ink); }
+    .table-tab.active {
+      border-color: var(--border);
+      background: var(--paper);
+      color: var(--ink);
+      font-weight: 600;
+    }
+
+    .grid-toolbar {
+      height: 38px;
+      flex-shrink: 0;
+      padding: 0 12px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .grid-tool {
+      height: 28px;
+      padding: 0 8px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      border-radius: var(--radius-sm);
+      color: var(--ink-secondary);
+      font-size: 11.5px;
+      font-weight: 500;
+    }
+    .grid-tool:hover { background: var(--surface-hover); color: var(--ink); }
+    .grid-tool.add { color: var(--brand); font-weight: 600; }
+
+    .grid-spacer { flex: 1; }
+
+    .grid-wrap {
+      min-height: 0;
+      flex: 1;
+      overflow: auto;
+      background: var(--paper);
+    }
+
+    .sheet {
+      min-width: 1000px;
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 12px;
+    }
+    .sheet th, .sheet td {
+      height: 36px;
+      padding: 0 10px;
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      white-space: nowrap;
+    }
+    .sheet th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      height: 32px;
+      color: var(--muted);
+      background: var(--surface);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .sheet .rownum {
+      position: sticky;
+      left: 0;
+      z-index: 3;
+      width: 40px;
+      padding: 0;
+      text-align: center;
+      color: var(--muted);
+      background: var(--surface);
+      font-size: 11px;
+    }
+    .sheet th.rownum { z-index: 4; }
+
+    .sheet .check {
+      width: 14px;
+      height: 14px;
+      border: 1px solid var(--border-strong);
+      border-radius: 3px;
+      cursor: pointer;
+      display: inline-block;
+      vertical-align: middle;
+    }
+
+    .sheet tbody tr:hover td { background: var(--surface-hover); }
+
+    .member-cell { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; color: var(--ink); }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 6px;
+      border-radius: var(--radius-sm);
+      font-size: 11px;
+      font-weight: 500;
+    }
+    .tag.green { color: var(--tag-green-fg); background: var(--tag-green-bg); }
+    .tag.yellow { color: var(--tag-yellow-fg); background: var(--tag-yellow-bg); }
+    .tag.blue { color: var(--tag-blue-fg); background: var(--tag-blue-bg); }
+    .tag.rose { color: var(--tag-pink-fg); background: var(--tag-pink-bg); }
+
+    .add-row {
+      height: 36px;
+      padding: 0 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .add-row:hover { background: var(--surface-hover); color: var(--ink); }
+
+    .schema-bar {
+      height: 34px;
+      flex-shrink: 0;
+      padding: 0 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      background: var(--surface);
+      font-size: 11px;
+    }
+    .schema-bar strong { color: var(--ink); }
+
+    /* Collection Cards */
+    .collection-view {
+      flex-direction: column;
+      background: var(--paper);
+    }
+    .collection-head {
+      height: 52px;
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      background: var(--paper);
+    }
+    .collection-head h2 { margin: 0; font: 600 15px var(--sans); color: var(--ink); }
+    .collection-head span { display: block; margin-left: 10px; color: var(--muted); font-size: 11px; }
+    .collection-head .primary { margin-left: auto; }
+
+    .collection-scroll { min-height: 0; flex: 1; overflow-y: auto; padding: 18px; }
+    .collection-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 14px;
+    }
+
+    .item-card {
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--paper);
+      box-shadow: var(--shadow-sm);
+      transition: border-color 0.12s;
+    }
+    .item-card:hover { border-color: var(--border-strong); }
+
+    .item-top { display: flex; align-items: flex-start; gap: 10px; }
+    .item-card h3 { margin: 0 0 3px; font: 600 13.5px var(--sans); color: var(--ink); }
+    .item-card p { margin: 0; color: var(--ink-secondary); font-size: 12px; line-height: 1.4; }
+
+    .item-foot {
+      margin-top: 14px;
+      padding-top: 10px;
+      display: flex;
+      align-items: center;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .item-foot .tag { margin-right: auto; }
+
+    /* Info Drawer */
+    .details-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      background: rgba(0, 0, 0, 0.3);
+    }
+    .details-backdrop.show { display: block; }
+
+    .details {
+      position: fixed;
+      z-index: 60;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: min(360px, 100vw);
+      padding: 0;
+      overflow-y: auto;
+      border-left: 1px solid var(--border);
+      background: var(--paper);
+      box-shadow: var(--shadow-lg);
+      transform: translateX(100%);
+      transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .details.show { transform: translateX(0); }
+
+    .details-top {
+      height: 52px;
+      padding: 0 14px;
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .details-top h2 { margin: 0 0 0 8px; font: 600 14px var(--sans); color: var(--ink); }
+
+    .details-profile { padding: 20px 16px; text-align: center; border-bottom: 1px solid var(--border); }
+    .details-profile .group-avatar { width: 56px; height: 56px; margin: auto; font-size: 18px; border-radius: var(--radius-md); }
+    .details-profile h3 { margin: 10px 0 2px; font: 600 15px var(--sans); color: var(--ink); }
+    .details-profile p { margin: 0 auto; max-width: 260px; color: var(--muted); font-size: 12px; }
+
+    .details-actions { margin-top: 16px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .detail-action {
+      height: 48px;
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--ink-secondary);
+      background: var(--paper);
+      font-size: 11px;
+      font-weight: 500;
+      transition: background-color 0.12s;
+    }
+    .detail-action:hover { background: var(--surface-hover); color: var(--ink); }
+
+    .detail-section { padding: 16px; border-bottom: 1px solid var(--border); }
+    .detail-title { display: flex; justify-content: space-between; color: var(--muted); font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
+
+    .member { padding: 8px 0; display: flex; align-items: center; gap: 8px; cursor: pointer; }
+    .member + .member { border-top: 1px solid var(--border); }
+    .member:hover { background: var(--surface-hover); }
+    .member .avatar { width: 24px; height: 24px; }
+    .member-copy { min-width: 0; flex: 1; }
+    .member-copy strong { display: block; font-size: 12px; font-weight: 500; color: var(--ink); }
+    .member-copy span { color: var(--muted); font-size: 11px; }
+
+    .admin {
+      padding: 1px 5px;
+      border-radius: 3px;
+      color: var(--tag-blue-fg);
+      background: var(--tag-blue-bg);
+      font-size: 10px;
+      font-weight: 600;
+    }
+
+    /* Modal Dialogs */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      background: rgba(0, 0, 0, 0.4);
+    }
+    .modal-backdrop.show { display: flex; }
+
+    .modal-box {
+      width: min(460px, 100%);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      background: var(--paper);
+      box-shadow: var(--shadow-lg);
+      padding: 20px;
+    }
+
+    .modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .modal-head h3 { margin: 0; font: 600 15px var(--sans); color: var(--ink); }
+
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; margin-bottom: 4px; color: var(--ink-secondary); font-size: 12px; font-weight: 500; }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--paper);
+      color: var(--ink);
+      font-size: 13px;
+      outline: 0;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+      border-color: var(--brand);
+    }
+
+    /* Command Palette */
+    .cmd-palette {
+      width: min(520px, 100%);
+      padding: 0;
+      overflow: hidden;
+    }
+    .cmd-input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .cmd-input-wrap input {
+      flex: 1;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      font-size: 14px;
+      color: var(--ink);
+    }
+    .cmd-list { max-height: 300px; overflow-y: auto; padding: 6px; }
+    .cmd-item {
+      padding: 8px 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      color: var(--ink);
+      font-size: 13px;
+    }
+    .cmd-item:hover { background: var(--surface-hover); }
+    .cmd-item span { color: var(--muted); font-size: 11px; margin-left: auto; }
+
+    /* Toast Notification */
+    .toast {
+      position: fixed;
+      z-index: 120;
+      left: 50%;
+      bottom: 24px;
+      padding: 8px 14px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border-radius: var(--radius-sm);
+      color: var(--paper);
+      background: var(--ink);
+      box-shadow: var(--shadow-md);
+      font-size: 12px;
+      font-weight: 500;
+      opacity: 0;
+      transform: translate(-50%, 12px);
+      pointer-events: none;
+      transition: all 0.2s;
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    /* Mobile Responsive Adjustments */
+    .mobile-nav { display: none; }
+
+    @media (max-width: 900px) {
+      .shell { grid-template-columns: 1fr; }
+      .sidebar {
+        position: fixed;
+        z-index: 40;
+        inset: 0 50px 0 0;
+        transform: translateX(-102%);
+        box-shadow: var(--shadow-lg);
+      }
+      .sidebar.show { transform: translateX(0); }
+      .mobile-menu { display: inline-flex; }
+      .main { padding-bottom: 56px; }
+      .mode-nav { display: none; }
+      
+      .mobile-nav {
+        position: fixed;
+        z-index: 30;
+        left: 0; right: 0; bottom: 0;
+        height: 56px;
+        padding-bottom: env(safe-area-inset-bottom);
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        border-top: 1px solid var(--border);
+        background: var(--paper);
+      }
+      .mobile-nav button {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 500;
+      }
+      .mobile-nav button.active { color: var(--brand); font-weight: 600; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app">
+  <div class="shell">
+    
+    <!-- Mobile Sidebar Backdrop Overlay -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <!-- Workspace Header -->
+      <div class="workspace">
+        <div class="logo"><img class="logo" src="/static/logo.jpeg" alt="Platform logo" style="border:0;background:transparent"></div>
+        <div class="workspace-copy">
+          <strong>Driver Network</strong>
+          <span>Northstar Workspace</span>
+        </div>
+        <button class="icon-btn" aria-label="Workspace options" id="workspaceBtn">
+          <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"/></svg>
+        </button>
+      </div>
+
+      <!-- Side Tabs: Groups vs Inbox -->
+      <div class="side-tabs">
+        <button class="side-tab active" id="tabGroups">Groups</button>
+        <button class="side-tab" id="tabInbox">Inbox</button>
+      </div>
+
+      <!-- Search Input -->
+      <div class="search">
+        <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <input id="searchGroups" placeholder="Search conversations...">
+        <span class="kbd-shortcut">⌘K</span>
+      </div>
+
+      <!-- Pane 1: Groups List -->
+      <div class="sidebar-pane" id="paneGroups">
+        <div class="section-label">Conversations</div>
+        <div class="chats" id="chatsList">
+          <button class="chat-item active" data-group="Driver Network">
+            <span class="group-avatar">DN</span>
+            <span class="chat-copy">
+              <span class="chat-title">Driver Network</span>
+              <span class="chat-preview">Maya: 18 drivers ready for dispatch</span>
+            </span>
+            <span class="chat-meta"><span class="badge" id="dnBadge">4</span></span>
+          </button>
+
+          <button class="chat-item" data-group="Merchant Pilot">
+            <span class="group-avatar">MP</span>
+            <span class="chat-copy">
+              <span class="chat-title">Merchant Pilot</span>
+              <span class="chat-preview">New onboarding response</span>
+            </span>
+            <span class="chat-meta"><span class="badge">2</span></span>
+          </button>
+
+          <button class="chat-item" data-group="Product Council">
+            <span class="group-avatar">PC</span>
+            <span class="chat-copy">
+              <span class="chat-title">Product Council</span>
+              <span class="chat-preview">Roadmap review updated</span>
+            </span>
+            <span class="chat-meta">Mon</span>
+          </button>
+
+          <button class="chat-item" data-group="Founding Team">
+            <span class="group-avatar">FT</span>
+            <span class="chat-copy">
+              <span class="chat-title">Founding Team</span>
+              <span class="chat-preview">Quarterly targets reviewed</span>
+            </span>
+            <span class="chat-meta">Fri</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Pane 2: Inbox Feed -->
+      <div class="sidebar-pane hidden" id="paneInbox">
+        <div class="section-label">Recent Notifications</div>
+        <div class="inbox-feed">
+          <div class="inbox-card">
+            <h4>Verification Complete</h4>
+            <p>18 drivers in Lagos passed document review and are ready for shift assignment.</p>
+            <time>9:14 AM</time>
+          </div>
+          <div class="inbox-card">
+            <h4>Task Response</h4>
+            <p>Jon Okafor posted Airport dispatch shift task for 12 eligible drivers.</p>
+            <time>9:24 AM</time>
+          </div>
+          <div class="inbox-card">
+            <h4>Form Response Received</h4>
+            <p>Sofia Nwosu shared the Driver verification form link in chat.</p>
+            <time>9:31 AM</time>
+          </div>
+        </div>
+      </div>
+
+      <!-- User Profile Footer -->
+      <div class="profile">
+        <div class="avatar" id="meAvatar">?</div>
+        <div class="profile-copy">
+          <strong id="meName">Not signed in</strong>
+          <span id="meSub">Log in to join groups</span>
+        </div>
+        <button class="icon-btn" id="logoutBtn" title="Log out">
+          <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+        </button>
+        <button class="icon-btn" id="themeToggleBtn" title="Toggle Light / Dark Theme">
+          <svg class="icon icon-sm" id="themeIcon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+        </button>
+      </div>
+    </aside>
+
+    <!-- MAIN VIEWPORT -->
+    <main class="main">
+      
+      <!-- Top Navigation Header -->
+      <header class="topbar">
+        <button class="icon-btn mobile-menu" id="mobileMenu" aria-label="Open sidebar">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+
+        <div class="group-head">
+          <div class="group-avatar" id="headerAvatar">DN</div>
+          <div class="group-name">
+            <strong id="groupName">Driver Network</strong>
+            <span><i class="online"></i>42 members · 16 online</span>
+          </div>
+        </div>
+
+        <!-- Integrated View Switcher Tabs -->
+        <nav class="mode-nav">
+          <button class="mode-btn active" data-view="chat">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            Conversation
+          </button>
+          <button class="mode-btn" data-view="data">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 9v11"/></svg>
+            Data <span class="count">5</span>
+          </button>
+          <button class="mode-btn" data-view="tasks">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg>
+            Tasks <span class="count" id="taskCountBadge">3</span>
+          </button>
+          <button class="mode-btn" data-view="forms">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+            Forms <span class="count">2</span>
+          </button>
+          <button class="mode-btn" data-view="views">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M3 3h18v18H3zM8 3v18"/></svg>
+            Views
+          </button>
+          <button class="mode-btn" data-view="agents">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><rect x="5" y="8" width="14" height="12" rx="2"/><path d="M12 8V4M8 12h.01M16 12h.01"/></svg>
+            Agents
+          </button>
+          <button class="mode-btn" data-view="schedules">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            Schedules
+          </button>
+          <button class="mode-btn" data-view="flows">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M4 12h6l2-6 4 12 2-6h2"/></svg>
+            Flows
+          </button>
+          <button class="mode-btn" data-view="inbox">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5 5h14l3 7v7H2v-7z"/></svg>
+            Inbox <span class="count" id="inboxCountBadge">3</span>
+          </button>
+          <button class="mode-btn" data-view="browser">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg>
+            Browser
+          </button>
+        </nav>
+
+        <div class="top-actions">
+          <button class="soft-btn" id="openDataQuickBtn">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 9v11"/></svg>
+            <span>Group data</span>
+          </button>
+
+          <button class="icon-btn" id="openCmdBtn" title="Command Search (⌘K)">
+            <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          </button>
+
+          <button class="icon-btn info-btn" id="openDetails" aria-label="Group details">
+            <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- 1. CONVERSATION VIEW -->
+      <section class="view chat-view active" id="view-chat">
+        <div class="chat-scroll" id="chatScroll">
+          <div class="date">Today, 13 August</div>
+
+          <!-- Message 1 -->
+          <div class="message">
+            <div class="avatar">MK</div>
+            <div class="message-content">
+              <div class="message-meta">
+                <strong>Maya Kim</strong>
+                <span>9:14 AM</span>
+              </div>
+              <div class="bubble">
+                <p>Morning everyone. The verification flow finished overnight. We have <strong>18 drivers ready for dispatch</strong> and six waiting on documents.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Message 2 (User) -->
+          <div class="message mine">
+            <div class="message-content">
+              <div class="message-meta">
+                <span>9:18 AM</span>
+                <strong>You</strong>
+              </div>
+              <div class="bubble">
+                <p>Can we offer tomorrow's airport shift only to verified drivers nearby with a rating above 4.7?</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- System Pill -->
+          <div class="system">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg>
+            Platform checked Members and Availability
+          </div>
+
+          <!-- Message 3 (Platform Query Result) -->
+          <div class="message">
+            <div class="avatar">P</div>
+            <div class="message-content">
+              <div class="message-meta">
+                <strong>Platform</strong>
+                <span>9:18 AM</span>
+              </div>
+              <div class="bubble">
+                <p>I found 12 people matching your filter. The task below is visible only to them.</p>
+              </div>
+              <div class="query">
+                <div class="query-line">
+                  <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                  Verified · rating 4.7+ · Lagos · available
+                </div>
+                <div class="query-results">
+                  <div><strong>12</strong><span>people match</span></div>
+                  <div><strong>4.86</strong><span>avg rating</span></div>
+                  <div><strong>9</strong><span>online now</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Message 4 (Task Card) -->
+          <div class="message">
+            <div class="avatar">JO</div>
+            <div class="message-content">
+              <div class="message-meta">
+                <strong>Jon Okafor</strong>
+                <span>9:24 AM</span>
+              </div>
+              <div class="bubble">
+                <p>Added it. <span class="mention">@eligible-drivers</span>, let us know before noon.</p>
+              </div>
+
+              <!-- Interactive Notion Task Card -->
+              <div class="gentle-card">
+                <div class="card-main">
+                  <div class="card-icon">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg>
+                  </div>
+                  <div class="card-copy">
+                    <div class="card-label">Task</div>
+                    <h3>Airport Dispatch Shift</h3>
+                    <p>Tomorrow · 6:00 - 11:00 AM · $108 payout</p>
+                  </div>
+                </div>
+                <div class="card-status">
+                  <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18"/></svg>
+                  Checked against your status, location and availability
+                </div>
+                <div class="card-actions">
+                  <button class="primary accept" id="acceptBtn">I'm available</button>
+                  <button class="quiet decline" id="declineBtn">Not this time</button>
+                  <span class="audience" id="taskAudience">Sent to 12 people · <strong id="respCount">5</strong>/12 responded</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Message 5 (Form Card) -->
+          <div class="message">
+            <div class="avatar">SN</div>
+            <div class="message-content">
+              <div class="message-meta">
+                <strong>Sofia Nwosu</strong>
+                <span>9:31 AM</span>
+              </div>
+              <div class="bubble">
+                <p>If you're still waiting on verification, this takes about two minutes. Your answers update your profile automatically.</p>
+              </div>
+
+              <div class="gentle-card">
+                <div class="card-main">
+                  <div class="card-icon">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M7 3h10l3 3v15H4V3zM8 9h8M8 13h8"/></svg>
+                  </div>
+                  <div class="card-copy">
+                    <div class="card-label">Form</div>
+                    <h3>Finish Your Verification</h3>
+                    <p>4 questions · about 2 minutes</p>
+                  </div>
+                </div>
+                <div class="card-actions">
+                  <button class="primary form-open" id="triggerVerificationFormBtn">Start form</button>
+                  <span class="audience">6 responses needed</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- System Message -->
+          <div class="system">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            Payment received · receipt saved to Samuel's record
+          </div>
+
+        </div>
+
+        <!-- Creation Menu Popover -->
+        <div class="create-menu" id="createMenu">
+          <button class="create-option" data-create="task">
+            <span class="card-icon"><svg class="icon icon-sm" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg></span>
+            <span>
+              <strong>Add a task</strong>
+              <span>Give people something to complete</span>
+            </span>
+          </button>
+          <button class="create-option" data-create="form">
+            <span class="card-icon"><svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M7 3h10l3 3v15H4V3zM8 9h8"/></svg></span>
+            <span>
+              <strong>Share a form</strong>
+              <span>Collect info into group tables</span>
+            </span>
+          </button>
+          <button class="create-option" data-create="sharetask">
+            <span class="card-icon"><svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M4 12h6l2-6 4 12 2-6h2"/></svg></span>
+            <span>
+              <strong>Post an existing task</strong>
+              <span>Pick from tasks made anywhere</span>
+            </span>
+          </button>
+          <button class="create-option" data-create="shareform">
+            <span class="card-icon"><svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M7 3h10l3 3v15H4V3zM8 9h8"/></svg></span>
+            <span>
+              <strong>Post an existing form</strong>
+              <span>Pick from forms made anywhere</span>
+            </span>
+          </button>
+          <button class="create-option" data-create="query">
+            <span class="card-icon"><svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></span>
+            <span>
+              <strong>Ask the data</strong>
+              <span>Find or classify group members</span>
+            </span>
+          </button>
+        </div>
+
+        <!-- Composer Input -->
+        <div class="composer-wrap">
+          <div class="composer">
+            <button class="compose-btn" id="createButton" aria-label="Add to conversation" title="Quick Actions">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+            <textarea id="messageInput" rows="1" placeholder="Message the group... (Try /task, /form, /query)"></textarea>
+            <button class="compose-btn" aria-label="Attach file" id="attachBtn" title="Attach file">
+              <svg class="icon" viewBox="0 0 24 24"><path d="m21 11-9 9a6 6 0 0 1-8-8l9-9a4 4 0 0 1 6 6l-9 9"/></svg>
+            </button>
+            <button class="compose-btn send" id="sendButton" aria-label="Send message" title="Send (Enter)">
+              <svg class="icon" viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4zM22 2 11 13"/></svg>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. DATA TABLE VIEW -->
+      <section class="view data-view" id="view-data">
+        <div class="data-head">
+          <div>
+            <h2>Group Data Directory</h2>
+          </div>
+          <p>Rows in other tables link back here automatically.</p>
+          <div class="data-actions">
+            <button class="quiet" id="importDataBtn">Import CSV</button>
+            <button class="primary" id="addRecordBtn">+ Add member</button>
+          </div>
+        </div>
+
+        <!-- Table Selector Tabs -->
+        <div class="table-tabs" id="dataTabs">
+          <button class="table-tab active" data-table="members">Members</button>
+          <button class="table-tab" data-table="vehicles">Vehicles</button>
+          <button class="table-tab" data-table="dispatches">Dispatches</button>
+          <button class="table-tab" data-table="documents">Documents</button>
+          <button class="table-tab" data-table="payments">Payments</button>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="grid-toolbar">
+          <button class="grid-tool" id="filterBtn">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+            <span>Filter</span>
+          </button>
+          <button class="grid-tool">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M8 6h12M4 6h.01M8 12h12M4 12h.01M8 18h12M4 18h.01"/></svg>
+            <span>Group</span>
+          </button>
+          <button class="grid-tool">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M8 7h12M8 12h8M8 17h4M4 7h.01"/></svg>
+            <span>Sort</span>
+          </button>
+          <button class="grid-tool">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M3 12h18M12 3v18"/></svg>
+            <span>Fields</span>
+          </button>
+          <span class="grid-spacer"></span>
+          <button class="grid-tool" id="tableSearchBtn">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <span>Search table</span>
+          </button>
+        </div>
+
+        <!-- Table Content Grid -->
+        <div class="grid-wrap">
+          <table class="sheet" id="mainTable">
+            <thead>
+              <tr>
+                <th class="rownum"><span class="check" id="selectAllCheck"></span></th>
+                <th>Name</th>
+                <th>Classification</th>
+                <th>Verification</th>
+                <th>Rating</th>
+                <th>City</th>
+                <th>Availability</th>
+                <th>Phone</th>
+                <th>Joined</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody">
+              <tr>
+                <td class="rownum">1</td>
+                <td><span class="member-cell"><i class="avatar">SA</i>Samuel Adeyemi</span></td>
+                <td><span class="tag blue">Airport fleet</span></td>
+                <td><span class="tag green">Verified</span></td>
+                <td>4.92</td>
+                <td>Lagos</td>
+                <td><span class="tag green">Available</span></td>
+                <td>+234 802 044 118</td>
+                <td>12 Jun 2026</td>
+              </tr>
+              <tr>
+                <td class="rownum">2</td>
+                <td><span class="member-cell"><i class="avatar">TB</i>Tola Bello</span></td>
+                <td><span class="tag yellow">Premium</span></td>
+                <td><span class="tag green">Verified</span></td>
+                <td>4.81</td>
+                <td>Lagos</td>
+                <td><span class="tag green">Available</span></td>
+                <td>+234 811 392 026</td>
+                <td>18 Jun 2026</td>
+              </tr>
+              <tr>
+                <td class="rownum">3</td>
+                <td><span class="member-cell"><i class="avatar">KN</i>Kelechi Nnaji</span></td>
+                <td><span class="tag blue">City fleet</span></td>
+                <td><span class="tag rose">In review</span></td>
+                <td>4.74</td>
+                <td>Ikeja</td>
+                <td><span class="tag yellow">On shift</span></td>
+                <td>+234 703 882 490</td>
+                <td>22 Jun 2026</td>
+              </tr>
+              <tr>
+                <td class="rownum">4</td>
+                <td><span class="member-cell"><i class="avatar">FA</i>Fatima Abdul</span></td>
+                <td><span class="tag yellow">Premium</span></td>
+                <td><span class="tag green">Verified</span></td>
+                <td>4.96</td>
+                <td>Lagos</td>
+                <td><span class="tag rose">Unavailable</span></td>
+                <td>+234 809 441 750</td>
+                <td>01 Jul 2026</td>
+              </tr>
+              <tr>
+                <td class="rownum">5</td>
+                <td><span class="member-cell"><i class="avatar">EO</i>Emeka Obi</span></td>
+                <td><span class="tag blue">City fleet</span></td>
+                <td><span class="tag rose">Missing docs</span></td>
+                <td>4.68</td>
+                <td>Yaba</td>
+                <td><span class="tag green">Available</span></td>
+                <td>+234 706 554 103</td>
+                <td>03 Jul 2026</td>
+              </tr>
+              <tr>
+                <td class="rownum">6</td>
+                <td><span class="member-cell"><i class="avatar">RA</i>Rita Abiola</span></td>
+                <td><span class="tag blue">Airport fleet</span></td>
+                <td><span class="tag green">Verified</span></td>
+                <td>4.88</td>
+                <td>Lekki</td>
+                <td><span class="tag green">Available</span></td>
+                <td>+234 815 339 207</td>
+                <td>09 Jul 2026</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="add-row" id="addTableRowBtn">
+            <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+            Add a member record
+          </div>
+        </div>
+
+        <div class="schema-bar">
+          <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M8 6h8M8 12h8M8 18h8M4 6h.01M4 12h.01M4 18h.01"/></svg>
+          <strong>Members is your group directory.</strong> Rows in other tables link back here automatically.
+        </div>
+      </section>
+
+      <!-- 3. TASKS COLLECTION VIEW -->
+      <section class="view collection-view" id="view-tasks">
+        <div class="collection-head">
+          <h2>Tasks</h2>
+          <span>Small actions people can complete directly from conversation.</span>
+          <button class="primary" id="newTaskModalBtn">+ New task</button>
+        </div>
+        <div class="collection-scroll">
+          <div class="collection-grid">
+            <article class="item-card">
+              <div class="item-top">
+                <div class="card-icon">
+                  <svg class="icon" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg>
+                </div>
+                <div>
+                  <h3>Airport dispatch shift</h3>
+                  <p>Offer an open shift to eligible drivers.</p>
+                </div>
+              </div>
+              <div class="item-foot">
+                <span class="tag green">Live</span>
+                5 of 12 responded
+              </div>
+            </article>
+
+            <article class="item-card">
+              <div class="item-top">
+                <div class="card-icon">
+                  <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg>
+                </div>
+                <div>
+                  <h3>Request document review</h3>
+                  <p>Ask an admin to resolve a document mismatch.</p>
+                </div>
+              </div>
+              <div class="item-foot">
+                <span class="tag green">Live</span>
+                6 waiting
+              </div>
+            </article>
+
+            <article class="item-card">
+              <div class="item-top">
+                <div class="card-icon">
+                  <svg class="icon" viewBox="0 0 24 24"><path d="M4 12h16M12 4v16"/></svg>
+                </div>
+                <div>
+                  <h3>Record inspection</h3>
+                  <p>Save a vehicle inspection and update eligibility.</p>
+                </div>
+              </div>
+              <div class="item-foot">
+                <span class="tag yellow">Draft</span>
+                Edited 2h ago
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. FORMS COLLECTION VIEW -->
+      <section class="view collection-view" id="view-forms">
+        <div class="collection-head">
+          <h2>Forms</h2>
+          <span>Friendly ways to collect structured information into your tables.</span>
+          <button class="primary" id="newFormModalBtn">+ New form</button>
+        </div>
+        <div class="collection-scroll">
+          <div class="collection-grid">
+            <article class="item-card">
+              <div class="item-top">
+                <div class="card-icon">
+                  <svg class="icon" viewBox="0 0 24 24"><path d="M7 3h10l3 3v15H4V3zM8 9h8"/></svg>
+                </div>
+                <div>
+                  <h3>Driver verification</h3>
+                  <p>Identity, license and vehicle details.</p>
+                </div>
+              </div>
+              <div class="item-foot">
+                <span class="tag green">Published</span>
+                36 responses
+              </div>
+            </article>
+
+            <article class="item-card">
+              <div class="item-top">
+                <div class="card-icon">
+                  <svg class="icon" viewBox="0 0 24 24"><path d="M7 3h10l3 3v15H4V3zM8 9h8"/></svg>
+                </div>
+                <div>
+                  <h3>Shift completion</h3>
+                  <p>Distance, incidents, receipts and status.</p>
+                </div>
+              </div>
+              <div class="item-foot">
+                <span class="tag green">Published</span>
+                118 responses
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5. VIEWS COLLECTION -->
+      <section class="view collection-view" id="view-views">
+        <div class="collection-head">
+          <h2>Views</h2>
+          <span>Simple pages built from your group tables.</span>
+          <button class="primary">+ New view</button>
+        </div>
+        <div class="collection-scroll">
+          <div class="collection-grid">
+            <article class="item-card">
+              <div class="item-top">
+                <div class="card-icon">
+                  <svg class="icon" viewBox="0 0 24 24"><path d="M3 5h18v14H3zM8 5v14"/></svg>
+                </div>
+                <div>
+                  <h3>Dispatch board</h3>
+                  <p>Live work grouped by status and region.</p>
+                </div>
+              </div>
+              <div class="item-foot">
+                <span class="tag green">Shared</span>
+                Updated live
+              </div>
+            </article>
+
+            <article class="item-card">
+              <div class="item-top">
+                <div class="card-icon">
+                  <svg class="icon" viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></svg>
+                </div>
+                <div>
+                  <h3>Verification funnel</h3>
+                  <p>See onboarding progress and blockers.</p>
+                </div>
+              </div>
+              <div class="item-foot">
+                <span class="tag green">Shared</span>
+                42 members
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- 6. AGENTS COLLECTION -->
+      <section class="view collection-view" id="view-agents">
+        <div class="collection-head">
+          <h2>Agents</h2>
+          <span>Connected helpers that understand your group data.</span>
+          <button class="primary">Connect agent</button>
+        </div>
+        <div class="collection-scroll">
+          <div class="collection-grid">
+            <article class="item-card">
+              <div class="item-top">
+                <div class="card-icon">
+                  <svg class="icon" viewBox="0 0 24 24"><rect x="5" y="7" width="14" height="12" rx="2"/><path d="M12 7V3M9 12h.01M15 12h.01"/></svg>
+                </div>
+                <div>
+                  <h3>Platform analyst</h3>
+                  <p>Answers questions and proposes structured changes.</p>
+                </div>
+              </div>
+              <div class="item-foot">
+                <span class="tag green">Online</span>
+                Read and suggest
+              </div>
+            </article>
+
+            <article class="item-card">
+              <div class="item-top">
+                <div class="card-icon">
+                  <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                </div>
+                <div>
+                  <h3>Compliance search</h3>
+                  <p>Checks licenses against external sources.</p>
+                </div>
+              </div>
+              <div class="item-foot">
+                <span class="tag green">Online</span>
+                Search and update
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- 7. SCHEDULES (group cron jobs) -->
+      <section class="view collection-view" id="view-schedules">
+        <div class="collection-head">
+          <h2>Schedules</h2>
+          <span>Group cron jobs — what jobs do, but owned by the group. Runs in this same process.</span>
+          <button class="primary" id="newScheduleBtn">+ New schedule</button>
+        </div>
+        <div class="collection-scroll">
+          <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+            <span class="tag blue" id="schedClock">tick 15s</span>
+            <span style="font-size:12px;color:var(--muted)">Daily 07:00 inspect · 12:00 match · 17:00 follow-up · weekly report. Pause, run-now, or add your own.</span>
+          </div>
+          <div class="collection-grid" id="scheduleGrid"></div>
+          <div style="margin-top:16px;border:1px solid var(--border);border-radius:8px;padding:12px;background:var(--surface)">
+            <strong style="font-size:13px">How it works</strong>
+            <p style="font-size:12px;color:var(--ink-secondary);margin:6px 0 0">A schedule = <em>when</em> (once / interval / daily HH:MM / weekly / cron M H * * *) + <em>what</em> (inspect, match, follow_up, report, push_inbox, create_task, run_agent). Each firing writes validated results and triggers Flows via <code>schedule.fired</code>.</p>
+          </div>
+          <div id="scheduleRunsBox" style="margin-top:12px;font-size:12px;color:var(--ink-secondary)"></div>
+        </div>
+      </section>
+
+      <!-- 8. FLOWS / REDIRECTS -->
+      <section class="view collection-view" id="view-flows">
+        <div class="collection-head">
+          <h2>Flows</h2>
+          <span>Redirects chain one step into the next — no human advancing the process.</span>
+          <button class="primary" id="newFlowBtn">+ New redirect</button>
+        </div>
+        <div class="collection-scroll">
+          <div class="collection-grid" id="flowGrid"></div>
+          <div style="margin-top:12px;font-size:12px;color:var(--muted)">Triggers: task.accepted · task.completed · offer.accepted · form.submitted · status.confirmed · schedule.fired · member.joined</div>
+        </div>
+      </section>
+
+      <!-- 9. RULES -->
+      <section class="view collection-view" id="view-rules">
+        <div class="collection-head">
+          <h2>Rules</h2>
+          <span>Plain language in, one deterministic check-list out. Confirm before it enforces.</span>
+          <button class="primary" id="newRuleBtn">+ New rule</button>
+        </div>
+        <div class="collection-scroll">
+          <div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px;background:var(--paper)">
+            <strong style="font-size:13px">Compile a rule (AI-assisted, deterministic)</strong>
+            <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+              <input id="ruleName" placeholder="Rule name — e.g. Airport eligibility" style="flex:1;min-width:180px;padding:8px 10px;border:1px solid var(--border);border-radius:6px">
+            </div>
+            <textarea id="ruleNL" rows="2" placeholder='e.g. Only verified drivers with rating above 4.7 can accept airport shifts' style="width:100%;margin-top:8px;padding:8px 10px;border:1px solid var(--border);border-radius:6px"></textarea>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button class="quiet" id="previewRuleBtn">Preview compilation</button>
+              <button class="primary" id="saveRuleBtn">Save as draft</button>
+              <span id="aiBadge" class="tag blue">AI: checking…</span>
+            </div>
+            <pre id="rulePreview" style="margin-top:8px;font:11px var(--mono);background:var(--surface);padding:10px;border-radius:6px;white-space:pre-wrap"></pre>
+          </div>
+          <div class="collection-grid" id="ruleGrid"></div>
+        </div>
+      </section>
+
+      <!-- 10. INBOX -->
+      <section class="view collection-view" id="view-inbox">
+        <div class="collection-head">
+          <h2>Inbox</h2>
+          <span>Personal items route to one member · public items broadcast.</span>
+          <button class="quiet" id="inboxFilterBtn">Filter: all</button>
+        </div>
+        <div class="collection-scroll"><div class="collection-grid" id="inboxGrid"></div></div>
+      </section>
+
+      <!-- 11. BROWSER / STATUS -->
+      <section class="view collection-view" id="view-browser">
+        <div class="collection-head">
+          <h2>In-app browser</h2>
+          <span>External actions report status back into the schema.</span>
+          <button class="primary" id="newExternalBtn">+ Open external action</button>
+        </div>
+        <div class="collection-scroll">
+          <div class="collection-grid" id="extGrid"></div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- Mobile Navigation Bar -->
+<nav class="mobile-nav">
+  <button class="active" data-view="chat">
+    <svg class="icon" viewBox="0 0 24 24"><path d="M20 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h9a4 4 0 0 1 4 4z"/></svg>
+    Chat
+  </button>
+  <button data-view="data">
+    <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16"/><path d="M3 9h18M9 9v11"/></svg>
+    Data
+  </button>
+  <button data-view="tasks">
+    <svg class="icon" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg>
+    Tasks
+  </button>
+  <button data-view="inbox">
+    <svg class="icon" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5 5h14l3 7v7H2v-7z"/></svg>
+    Inbox
+  </button>
+  <button id="mobileMore">
+    <svg class="icon" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>
+    More
+  </button>
+</nav>
+
+<!-- Mobile "More" sheet : every view reachable -->
+<div class="modal-backdrop" id="moreSheet">
+  <div class="modal-box">
+    <div class="modal-head"><h3>All views</h3><button class="icon-btn" id="closeMoreSheet"><svg class="icon" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
+    <div id="moreGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>
+  </div>
+</div>
+
+<!-- Group Details Slide Drawer -->
+<div class="details-backdrop" id="backdrop"></div>
+<aside class="details" id="details">
+  <div class="details-top">
+    <button class="icon-btn" id="closeDetails" aria-label="Close panel">
+      <svg class="icon" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg>
+    </button>
+    <h2>Group Info</h2>
+  </div>
+
+  <div class="details-profile">
+    <div class="group-avatar" id="drawerGroupAvatar">DN</div>
+    <h3 id="drawerGroupName">Driver Network</h3>
+    <p>A shared place to onboard, coordinate and prepare the driver community.</p>
+
+    <div class="details-actions">
+      <button class="detail-action" data-detail-view="data">
+        <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16"/><path d="M3 9h18"/></svg>
+        Group data
+      </button>
+      <button class="detail-action" id="inviteBtn">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8M19 8v6M16 11h6"/></svg>
+        Invite link
+      </button>
+      <button class="detail-action" id="drawerSearchBtn">
+        <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        Search
+      </button>
+    </div>
+  </div>
+
+  <div class="detail-section">
+    <div class="detail-title">
+      <span>Members</span>
+      <span>42</span>
+    </div>
+
+    <div class="member">
+      <div class="avatar">AR</div>
+      <div class="member-copy">
+        <strong>Alex Rowan (you)</strong>
+        <span>Workspace owner</span>
+      </div>
+      <span class="admin">ADMIN</span>
+    </div>
+
+    <div class="member">
+      <div class="avatar">MK</div>
+      <div class="member-copy">
+        <strong>Maya Kim</strong>
+        <span>Operations lead</span>
+      </div>
+      <span class="admin">ADMIN</span>
+    </div>
+
+    <div class="member">
+      <div class="avatar">JO</div>
+      <div class="member-copy">
+        <strong>Jon Okafor</strong>
+        <span>Dispatch coordinator</span>
+      </div>
+    </div>
+
+    <div class="member">
+      <div class="avatar">SN</div>
+      <div class="member-copy">
+        <strong>Sofia Nwosu</strong>
+        <span>Compliance manager</span>
+      </div>
+    </div>
+
+    <button class="quiet" style="width:100%; margin-top:10px;">See all members</button>
+  </div>
+
+  <div class="detail-section">
+    <div class="detail-title">
+      <span>Paced catch-up</span>
+      <span style="font-weight:400;text-transform:none;letter-spacing:0">phased messages</span>
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:12px;margin:8px 0">
+      <input type="checkbox" id="phaseToggle" onchange="savePhase()"> Pace new messages for me
+    </label>
+    <label style="display:block;font-size:12px;color:var(--ink-secondary)">Gap between messages: <strong id="phaseGapVal">1.5s</strong> (max 5s)</label>
+    <input type="range" id="phaseGap" min="500" max="5000" step="500" value="1500" style="width:100%" onchange="savePhase()" oninput="document.getElementById('phaseGapVal').textContent=(this.value/1000).toFixed(1)+'s'">
+    <p style="font-size:11px;color:var(--muted);margin:6px 0 0">New here? Turn this on and the flood arrives one message at a time. Pause to observe, skip to jump live.</p>
+  </div>
+
+  <div class="detail-section">
+    <div class="detail-title">
+      <span>Shared tools</span>
+      <span>8</span>
+    </div>
+
+    <div class="member" data-detail-view="tasks">
+      <div class="card-icon">
+        <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg>
+      </div>
+      <div class="member-copy">
+        <strong>3 active tasks</strong>
+        <span>Small actions shared in chat</span>
+      </div>
+    </div>
+
+    <div class="member" data-detail-view="forms">
+      <div class="card-icon">
+        <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M7 3h10v18H4V3z"/></svg>
+      </div>
+      <div class="member-copy">
+        <strong>2 published forms</strong>
+        <span>Collecting structured data</span>
+      </div>
+    </div>
+
+    <div class="member" data-detail-view="views">
+      <div class="card-icon">
+        <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M3 5h18v14H3zM8 5v14"/></svg>
+      </div>
+      <div class="member-copy">
+        <strong>2 shared views</strong>
+        <span>Pages built from group data</span>
+      </div>
+    </div>
+
+    <div class="member" data-detail-view="agents">
+      <div class="card-icon">
+        <svg class="icon icon-sm" viewBox="0 0 24 24"><rect x="5" y="7" width="14" height="12" rx="2"/><path d="M12 7V3"/></svg>
+      </div>
+      <div class="member-copy">
+        <strong>2 connected agents</strong>
+        <span>Helpers with controlled access</span>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- Verification Form Modal -->
+<div class="modal-backdrop" id="verificationModal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3>Driver Verification Form</h3>
+      <button class="icon-btn" id="closeFormModalBtn">
+        <svg class="icon" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+
+    <form id="driverForm">
+      <div class="form-group">
+        <label for="formFullName">Full Legal Name</label>
+        <input id="formFullName" required value="Alex Rowan">
+      </div>
+
+      <div class="form-group">
+        <label for="formLicenseNum">Driver License Number</label>
+        <input id="formLicenseNum" required placeholder="e.g. LAG-90184-B">
+      </div>
+
+      <div class="form-group">
+        <label for="formVehicleType">Vehicle Category</label>
+        <select id="formVehicleType">
+          <option value="Airport fleet">Airport fleet</option>
+          <option value="Premium">Premium</option>
+          <option value="City fleet">City fleet</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="formCity">Operating City</label>
+        <input id="formCity" value="Lagos">
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
+        <button type="button" class="quiet" id="cancelFormBtn">Cancel</button>
+        <button type="submit" class="primary">Submit Verification</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Command Palette Modal (⌘K) -->
+<div class="modal-backdrop" id="cmdModal">
+  <div class="modal-box cmd-palette">
+    <div class="cmd-input-wrap">
+      <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input id="cmdInput" placeholder="Type a command or search workspace...">
+      <span style="font-size:11px; color:var(--muted)">ESC to exit</span>
+    </div>
+    <div class="cmd-list" id="cmdList">
+      <div class="cmd-item" data-cmd="view-chat">
+        <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Go to Conversation View
+        <span>Jump</span>
+      </div>
+      <div class="cmd-item" data-cmd="view-data">
+        <svg class="icon icon-sm" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 9v11"/></svg>
+        Go to Group Data Sheet
+        <span>Jump</span>
+      </div>
+      <div class="cmd-item" data-cmd="add-member">
+        <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        Add New Member Record
+        <span>Action</span>
+      </div>
+      <div class="cmd-item" data-cmd="open-form">
+        <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M7 3h10l3 3v15H4V3zM8 9h8"/></svg>
+        Open Driver Verification Form
+        <span>Form</span>
+      </div>
+      <div class="cmd-item" data-cmd="toggle-theme">
+        <svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+        Toggle Light / Dark Theme
+        <span>Theme</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Notification -->
+<div class="toast" id="toast">
+  <svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg>
+  <span id="toastMsg">Updated</span>
+</div>
+
+<style>
+  #newMsgPill { position:absolute; left:50%; transform:translateX(-50%); bottom:74px; z-index:15;
+    display:none; padding:6px 12px; border-radius:99px; background:var(--ink); color:var(--paper);
+    font-size:12px; font-weight:600; box-shadow:var(--shadow-md); }
+  #newMsgPill.show { display:block; }
+  #typingBar { font-size:11px; color:var(--muted); padding:2px 0 6px; min-height:18px; }
+  #slashPop { position:absolute; z-index:20; left:max(16px,calc((100% - 720px)/2)); bottom:74px; width:300px;
+    padding:6px; display:none; border:1px solid var(--border); border-radius:8px; background:var(--paper); box-shadow:var(--shadow-md); }
+  #slashPop.show { display:block; }
+  .slash-item { width:100%; padding:8px 10px; display:flex; gap:8px; align-items:center; border-radius:6px; text-align:left; }
+  .slash-item:hover, .slash-item.sel { background:var(--surface-hover); }
+  .slash-item code { font:600 11px var(--mono); color:var(--brand); }
+  .slash-item span { font-size:11px; color:var(--muted); }
+  .msg-pending { opacity:.55; }
+  .day-sep { width:max-content; margin:14px auto; padding:2px 10px; border-radius:6px; background:var(--surface); border:1px solid var(--border); color:var(--muted); font-size:11px; font-weight:500; }
+  .stat-cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px; margin-bottom:12px; }
+  .stat-card { padding:12px; border:1px solid var(--border); border-radius:8px; background:var(--paper); }
+  .stat-card strong { display:block; font-size:20px; }
+  .stat-card span { font-size:11px; color:var(--muted); }
+  .empty-state { padding:28px 18px; text-align:center; color:var(--muted); font-size:13px; border:1px dashed var(--border-strong); border-radius:8px; }
+  .group-row-btns { display:flex; gap:6px; padding:6px 10px; }
+  .group-row-btns .quiet { flex:1; justify-content:center; }
+  #authGate { backdrop-filter: blur(2px); }
+  .mobile-nav { overflow-x:auto; grid-template-columns:none !important; grid-auto-flow:column; grid-auto-columns:1fr; }
+  .msg-actions { display:flex; gap:2px; margin-top:4px; opacity:0; transition:opacity .15s; }
+  .message:hover .msg-actions { opacity:1; }
+  @media (hover:none) { .msg-actions { opacity:1; } }
+  .msg-act { width:26px; height:26px; display:inline-flex; align-items:center; justify-content:center; border-radius:6px; color:var(--muted); font-size:14px; }
+  .msg-act:hover { background:var(--surface-hover); color:var(--ink); }
+  .rx-row { display:flex; gap:4px; margin-top:4px; flex-wrap:wrap; }
+  .rx-chip { display:inline-flex; align-items:center; gap:3px; padding:1px 7px; border:1px solid var(--border); border-radius:99px; background:var(--paper); font-size:12px; }
+  .rx-chip.mine { border-color:var(--brand); background:var(--brand-light); }
+  .quote { border-left:3px solid var(--brand); background:var(--surface); border-radius:0 6px 6px 0; padding:4px 8px; margin-bottom:6px; font-size:12px; cursor:pointer; }
+  .quote strong { display:block; font-size:11px; color:var(--brand); }
+  .quote span { color:var(--ink-secondary); display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:320px; }
+  .fwd-label { font-size:11px; color:var(--muted); font-style:italic; margin-bottom:4px; display:block; }
+  #replyBar { display:none; align-items:center; gap:8px; padding:6px 10px; margin-bottom:6px; border:1px solid var(--border); border-radius:8px; background:var(--surface); font-size:12px; }
+  #replyBar.show { display:flex; }
+  #emojiPop, #rxPop { position:absolute; z-index:20; left:max(16px,calc((100% - 720px)/2)); bottom:74px; padding:8px; display:none; border:1px solid var(--border); border-radius:8px; background:var(--paper); box-shadow:var(--shadow-md); max-width:280px; }
+  #emojiPop.show, #rxPop.show { display:block; }
+  #emojiPop button, #rxPop button { font-size:20px; padding:4px 6px; border-radius:6px; }
+  #emojiPop button:hover, #rxPop button:hover { background:var(--surface-hover); }
+  .flash { animation:flash 1.2s; }
+  @keyframes flash { 0%,60% { background:var(--brand-light); } 100% { background:transparent; } }
+  #phaseBar { position:absolute; left:50%; transform:translateX(-50%); bottom:118px; z-index:16; display:none; align-items:center; gap:8px; padding:6px 8px 6px 12px; border-radius:99px; background:var(--ink); color:var(--paper); font-size:12px; font-weight:500; box-shadow:var(--shadow-md); }
+  #phaseBar.show { display:flex; }
+  #phaseBar button { padding:4px 10px; border-radius:99px; background:rgba(255,255,255,.15); color:#fff; font-size:11px; font-weight:600; }
+</style>
+
+<!-- AUTH GATE -->
+<div class="modal-backdrop show" id="authGate" style="z-index:200">
+  <div class="modal-box" style="text-align:center">
+    <img class="auth-logo" src="/static/logo.jpeg" alt="Platform logo">
+    <h3 style="margin:12px 0 2px;font:700 20px var(--sans)">Platform</h3>
+    <p style="color:var(--muted);font-size:12px;margin:0 0 14px">Groups that organize themselves.</p>
+    <div class="side-tabs" style="margin:0 0 10px">
+      <button class="side-tab active" id="authTabLogin">Log in</button>
+      <button class="side-tab" id="authTabRegister">Register</button>
+    </div>
+    <div class="form-group" style="text-align:left"><label>Username</label><input id="authUser" placeholder="e.g. alex" autocomplete="username"></div>
+    <div class="form-group" style="text-align:left;display:none" id="authNameWrap"><label>Display name</label><input id="authName" placeholder="e.g. Alex Rowan"></div>
+    <div class="form-group" style="text-align:left"><label>Password</label><input id="authPass" type="password" placeholder="......" autocomplete="current-password"></div>
+    <div id="authErr" style="color:#b3261e;font-size:12px;min-height:18px;margin-bottom:6px"></div>
+    <button class="primary" id="authGo" style="width:100%">Log in</button>
+    <p style="color:var(--muted);font-size:11px;margin:10px 0 0">Demo accounts: <code>alex</code> / <code>maya</code> / <code>jon</code> / <code>sofia</code> — password <code>platform</code></p>
+  </div>
+</div>
+
+<!-- GENERIC MODAL (replaces all prompt() calls) -->
+<div class="modal-backdrop" id="genModal">
+  <div class="modal-box">
+    <div class="modal-head"><h3 id="genTitle">Dialog</h3><button class="icon-btn" id="genClose"><svg class="icon" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
+    <div id="genBody"></div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px">
+      <button class="quiet" id="genCancel">Cancel</button>
+      <button class="primary" id="genOk">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- JAVASCRIPT LOGIC : live API wiring for every Platform primitive -->
+<script>
+/* Platform live frontend — auth, groups, chat interactions, dashboards. */
+const store = { get:(k,d)=>{ try{ const v=localStorage.getItem(k); return v==null?d:JSON.parse(v);}catch(e){return d;} }, set:(k,v)=>localStorage.setItem(k,JSON.stringify(v)), del:(k)=>localStorage.removeItem(k) };
+let TOKEN = store.get('platform_token', null);
+const api = async (path, opts={}) => {
+  const headers = {'Content-Type':'application/json'};
+  if (TOKEN) headers['Authorization'] = 'Bearer ' + TOKEN;
+  const r = await fetch(path, {...opts, headers:{...headers, ...(opts.headers||{})}});
+  if (r.status === 401) { showAuth('Session expired — log in again.'); throw new Error('not authenticated'); }
+  const t = await r.text();
+  let j = {}; try { j = t ? JSON.parse(t) : {}; } catch(e){ j = {raw:t}; }
+  if (!r.ok) throw new Error(j.detail || t.slice(0,300) || ('HTTP '+r.status));
+  return j;
+};
+const esc = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const $ = id => document.getElementById(id);
+const state = { me:null, groupId:null, memberId:null, myRole:'member', groups:[], members:[], tables:[], activeTable:null,
+  tasks:[], forms:[], views:[], agents:[], runs:[], schedules:[], flows:[], rules:[], inbox:[], inboxFilter:'all', ext:[], dash:{},
+  msgs:[], lastMsgId:0, lastSeen:{}, typingThrottle:0 };
+window.toast = (t) => { $('toastMsg').textContent = t; $('toast').classList.add('show'); clearTimeout(window.tTimer); window.tTimer=setTimeout(()=>$('toast').classList.remove('show'),2400); };
+const toast = window.toast;
+
+/* ---------- generic modal (replaces native dialogs) ---------- */
+let genResolve = null;
+function openModal(title, fields, okLabel='Save'){
+  $('genTitle').textContent = title; $('genOk').textContent = okLabel;
+  $('genBody').innerHTML = fields.map((f,i)=>{
+    if (f.type==='select') return `<div class="form-group"><label>${esc(f.label)}</label><select data-i="${i}">${(f.options||[]).map(o=>`<option ${o===f.value?'selected':''}>${esc(o)}</option>`).join('')}</select></div>`;
+    if (f.type==='textarea') return `<div class="form-group"><label>${esc(f.label)}</label><textarea data-i="${i}" rows="3" placeholder="${esc(f.hint||'')}">${esc(f.value||'')}</textarea></div>`;
+    if (f.type==='info') return `<p style="font-size:12px;color:var(--ink-secondary)">${f.html}</p>`;
+    return `<div class="form-group"><label>${esc(f.label)}</label><input data-i="${i}" value="${esc(f.value||'')}" placeholder="${esc(f.hint||'')}"></div>`;
+  }).join('');
+  $('genModal').classList.add('show');
+  const first = $('genBody').querySelector('input,select,textarea'); if (first) first.focus();
+  return new Promise(res => { genResolve = res; });
+}
+function closeModal(val){
+  $('genModal').classList.remove('show');
+  if (genResolve){ const r = genResolve; genResolve = null; r(val); }
+}
+$('genClose').onclick = () => closeModal(null);
+$('genCancel').onclick = () => closeModal(null);
+$('genOk').onclick = () => {
+  const inputs = [...$('genBody').querySelectorAll('[data-i]')];
+  const vals = inputs.map(el => el.value);
+  closeModal(vals);
+};
+async function ask(title, fields, okLabel){ return openModal(title, fields, okLabel); }
+
+/* ---------- auth ---------- */
+let authMode = 'login';
+function showAuth(msg){
+  $('authGate').classList.add('show');
+  if (msg) $('authErr').textContent = msg;
+}
+function hideAuth(){ $('authGate').classList.remove('show'); $('authErr').textContent=''; }
+function setAuthMode(m){
+  authMode = m;
+  $('authTabLogin').classList.toggle('active', m==='login');
+  $('authTabRegister').classList.toggle('active', m==='register');
+  $('authNameWrap').style.display = m==='register' ? 'block' : 'none';
+  $('authGo').textContent = m==='login' ? 'Log in' : 'Create account';
+}
+$('authTabLogin').onclick = ()=>setAuthMode('login');
+$('authTabRegister').onclick = ()=>setAuthMode('register');
+async function doAuth(){
+  const username = $('authUser').value.trim().toLowerCase();
+  const password = $('authPass').value;
+  const name = $('authName').value.trim() || username;
+  if (!username || !password){ $('authErr').textContent = 'Username and password required.'; return; }
+  try {
+    const url = authMode==='login' ? '/api/auth/login' : '/api/auth/register';
+    const body = authMode==='login' ? {username, password} : {username, password, name};
+    const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.detail || 'failed');
+    TOKEN = j.token; store.set('platform_token', TOKEN);
+    hideAuth(); await boot();
+  } catch(e){ $('authErr').textContent = e.message; }
+}
+$('authGo').onclick = doAuth;
+$('authPass').addEventListener('keydown', e=>{ if(e.key==='Enter') doAuth(); });
+$('logoutBtn').onclick = async () => {
+  try { await api('/api/auth/logout', {method:'POST', body:'{}'}); } catch(e){}
+  TOKEN = null; store.del('platform_token'); state.me = null;
+  showAuth();
+};
+
+/* ---------- navigation ---------- */
+const views = document.querySelectorAll('.view');
+const VIEW_LABELS = {chat:'Conversation',data:'Data',tasks:'Tasks',forms:'Forms',views:'Views',agents:'Agents',schedules:'Schedules',flows:'Flows',inbox:'Inbox',browser:'Browser'};
+function showView(name){
+  views.forEach(v=>v.classList.toggle('active', v.id==='view-'+name));
+  document.querySelectorAll('.mode-btn').forEach(b=>b.classList.toggle('active', b.dataset.view===name));
+  document.querySelectorAll('.mobile-nav [data-view]').forEach(b=>b.classList.toggle('active', b.dataset.view===name));
+  if(name==='schedules') renderSchedules(); if(name==='flows') renderFlows(); if(name==='rules') renderRules();
+  if(name==='inbox') renderInbox(); if(name==='browser') renderExt(); if(name==='agents') renderAgents();
+  if(name==='tasks') renderTasks(); if(name==='forms') renderForms(); if(name==='views') renderViews();
+  if(name==='data') loadActiveTable(); if(name==='chat'){ renderChat(); stickToBottom(true); }
+}
+window.gotoView = showView;
+document.querySelectorAll('.mode-btn').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));
+document.querySelectorAll('.mobile-nav [data-view]').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));
+$('moreGrid').innerHTML = Object.entries(VIEW_LABELS).map(([k,v])=>`<button class="quiet" data-mv="${k}" style="justify-content:center">${v}</button>`).join('');
+document.querySelectorAll('#moreGrid [data-mv]').forEach(b=>b.addEventListener('click',()=>{ $('moreSheet').classList.remove('show'); showView(b.dataset.mv); }));
+$('mobileMore').addEventListener('click',()=>$('moreSheet').classList.add('show'));
+$('closeMoreSheet').addEventListener('click',()=>$('moreSheet').classList.remove('show'));
+
+/* theme / drawer / sidebar */
+const html = document.documentElement;
+$('themeToggleBtn').addEventListener('click',()=>{ const d=html.classList.toggle('dark'); toast(d?'Dark theme':'Light theme'); });
+const details=$('details'), backdrop=$('backdrop');
+const openDetails=()=>{details.classList.add('show');backdrop.classList.add('show');};
+const closeDetails=()=>{details.classList.remove('show');backdrop.classList.remove('show');};
+$('openDetails').addEventListener('click',openDetails);
+$('closeDetails').addEventListener('click',closeDetails);
+backdrop.addEventListener('click',closeDetails);
+document.querySelectorAll('[data-detail-view]').forEach(b=>b.addEventListener('click',()=>{closeDetails();showView(b.dataset.detailView);}));
+$('mobileMenu').addEventListener('click',()=>{$('sidebar').classList.add('show');$('sidebarBackdrop').classList.add('show');});
+$('sidebarBackdrop').addEventListener('click',()=>{$('sidebar').classList.remove('show');$('sidebarBackdrop').classList.remove('show');});
+$('tabGroups').addEventListener('click',()=>{$('tabGroups').classList.add('active');$('tabInbox').classList.remove('active');$('paneGroups').classList.remove('hidden');$('paneInbox').classList.add('hidden');});
+$('tabInbox').addEventListener('click',()=>{$('tabInbox').classList.add('active');$('tabGroups').classList.remove('active');$('paneInbox').classList.remove('hidden');$('paneGroups').classList.add('hidden');loadInbox();});
+$('searchGroups').addEventListener('input', e => {
+  const q = e.target.value.toLowerCase();
+  document.querySelectorAll('.chat-item').forEach(i => { i.style.display = (i.dataset.gname||'').toLowerCase().includes(q) ? 'grid' : 'none'; });
+});
+
+/* ---------- boot ---------- */
+async function boot(){
+  if (!TOKEN){ showAuth(); return; }
+  try {
+    state.me = await api('/api/auth/me');
+  } catch(e){ return; }
+  $('meAvatar').textContent = (state.me.name||'?').slice(0,2).toUpperCase();
+  $('meName').textContent = state.me.name;
+  $('meSub').textContent = '@' + (state.me.username||'');
+  try { const st = await api('/api/ai-status'); $('aiBadge').textContent = 'AI: ' + (st.last_error ? 'local fallback' : st.model); $('aiBadge').className='tag '+(st.last_error?'yellow':'green'); } catch(e){}
+  state.groups = await api('/api/groups');
+  renderGroupList();
+  const want = new URLSearchParams(location.search).get('join');
+  if (want){ history.replaceState({},'',location.pathname); await joinByCode(want); state.groups = await api('/api/groups'); renderGroupList(); }
+  if (!state.groups.length){ renderEmptyGroups(); return; }
+  const first = state.groups[0];
+  await selectGroup(first.id);
+  setInterval(poll, 4000);
+}
+function renderEmptyGroups(){
+  $('chatsList').innerHTML = `<div class="empty-state">No groups yet.<br>Create one or join with an invite code.</div>
+    <div class="group-row-btns"><button class="quiet" id="egCreate">+ New group</button><button class="quiet" id="egJoin">Join</button></div>`;
+  $('egCreate').onclick = createGroupFlow; $('egJoin').onclick = joinFlow;
+}
+
+/* ---------- groups ---------- */
+function unreadFor(gid){ return Math.max(0, (state.lastMsgIdByGroup?.[gid]||0) - (store.get('platform_seen',{})[gid]||0)); }
+function renderGroupList(){
+  const seen = store.get('platform_seen',{});
+  $('chatsList').innerHTML = state.groups.map(g=>{
+    const un = Math.max(0, (state.lastMsgIdByGroup?.[g.id]||0) - (seen[g.id]||0));
+    const initials = g.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    return `<button class="chat-item ${g.id===state.groupId?'active':''}" data-g="${g.id}" data-gname="${esc(g.name)}">
+      <span class="group-avatar">${esc(initials)}</span>
+      <span class="chat-copy"><span class="chat-title">${esc(g.name)}</span><span class="chat-preview">${esc(g.description||g.members+' members')}</span></span>
+      <span class="chat-meta">${un?`<span class="badge">${un}</span>`:g.members+' 👥'}</span></button>`;
+  }).join('') + `<div class="group-row-btns"><button class="quiet" id="sideCreate">+ New</button><button class="quiet" id="sideJoin">Join</button></div>`;
+  document.querySelectorAll('.chat-item').forEach(b=>b.addEventListener('click',()=>selectGroup(+b.dataset.g)));
+  $('sideCreate').onclick = createGroupFlow; $('sideJoin').onclick = joinFlow;
+}
+async function createGroupFlow(){
+  const v = await ask('New group', [{label:'Group name', hint:'e.g. Campus Clothes Exchange'}, {label:'Description', hint:'What is this group for?'}], 'Create group');
+  if (!v) return;
+  try { const g = await api('/api/groups', {method:'POST', body:JSON.stringify({name:v[0], description:v[1]})}); toast('Group created'); state.groups = await api('/api/groups'); renderGroupList(); await selectGroup(g.id); }
+  catch(e){ toast(e.message); }
+}
+async function joinFlow(){
+  const v = await ask('Join with invite code', [{label:'Code', hint:'e.g. A1B2C3'}], 'Join');
+  if (!v || !v[0]) return;
+  await joinByCode(v[0]);
+  state.groups = await api('/api/groups'); renderGroupList();
+}
+async function joinByCode(code){
+  try { const r = await api('/api/groups/join', {method:'POST', body:JSON.stringify({code})}); toast(r.joined ? 'Joined!' : (r.reason||'Already a member')); if (r.joined) await selectGroup(r.id); }
+  catch(e){ toast(e.message); }
+}
+async function selectGroup(gid){
+  state.groupId = gid; state.msgs = []; state.lastMsgId = 0;
+  const g = await api('/api/groups/'+gid);
+  state.members = g.members; state.tables = g.tables; state.activeTable = g.tables[0]||null;
+  const me = g.members.find(m=>m.id===g.my_member_id);
+  state.memberId = g.my_member_id; state.myRole = g.my_role;
+  state.inviteCode = g.invite_code;
+  loadPhased();
+  $('groupName').textContent = g.name; $('drawerGroupName').textContent = g.name;
+  $('drawerGroupAvatar').textContent = g.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  document.querySelector('.details-profile p').textContent = g.description||'';
+  renderGroupList();
+  await Promise.all([loadMessages(true, true), loadTables(), loadTasks(), loadForms(), loadViews(), loadAgents(), loadSchedules(), loadFlows(), loadRules(), loadInbox(true), loadExt(), loadDash()]);
+  renderAll();
+  markSeen();
+}
+function renderAll(){ renderChat(); loadReactions(); renderTasks(); renderForms(); renderViews(); renderAgents(); renderSchedules(); renderFlows(); renderRules(); renderInbox(); renderExt(); }
+function markSeen(){
+  if (!state.groupId || !state.lastMsgId) return;
+  const seen = store.get('platform_seen',{});
+  if ((seen[state.groupId]||0) < state.lastMsgId){ seen[state.groupId] = state.lastMsgId; store.set('platform_seen', seen); }
+}
+async function loadDash(){ try{ state.dash = await api(`/api/groups/${state.groupId}/dashboard`);}catch(e){} }
+
+/* ---------- paced catch-up (phased messages) ---------- */
+state.phase = {queue:[], paused:false, enabled:false, gap:1500, timer:null, last:0, total:0};
+function loadPhased(){
+  const me = (state.members||[]).find(m=>m.id===state.memberId);
+  const cfg = (me && me.prefs && me.prefs.phased) || {};
+  state.phase.enabled = !!cfg.enabled;
+  state.phase.gap = Math.min(5000, Math.max(500, +cfg.gap || 1500));
+  renderPhaseSettings(); updatePhaseBar();
+}
+function renderPhaseSettings(){
+  const t = $('phaseToggle'); if (!t) return;
+  t.checked = state.phase.enabled;
+  $('phaseGap').value = state.phase.gap;
+  $('phaseGapVal').textContent = (state.phase.gap/1000).toFixed(1) + 's';
+}
+window.savePhase = async ()=>{
+  const enabled = $('phaseToggle').checked;
+  const gap = +$('phaseGap').value;
+  try {
+    const r = await api(`/api/groups/${state.groupId}/members/${state.memberId}`,{method:'PATCH',body:JSON.stringify({prefs:{phased:{enabled,gap}}})});
+    state.phase.enabled = enabled; state.phase.gap = gap;
+    const me = state.members.find(m=>m.id===state.memberId); if (me) me.prefs = r.prefs;
+    toast(enabled ? ('Paced catch-up on — a message every ' + (gap/1000) + 's') : 'Paced catch-up off — live flood');
+    updatePhaseBar();
+  } catch(e){ toast(e.message); }
+};
+function stopPhaseDrip(){ if (state.phase.timer){ clearInterval(state.phase.timer); state.phase.timer = null; } }
+function updatePhaseBar(){
+  const bar = $('phaseBar'); if (!bar) return;
+  const n = state.phase.queue.length;
+  if (!n){ bar.classList.remove('show'); return; }
+  bar.innerHTML = `<span>Catching up — ${n} to go · every ${(state.phase.gap/1000).toFixed(1)}s</span>`
+    + `<button onclick="phasePauseToggle()">${state.phase.paused?'Resume':'Pause'}</button>`
+    + `<button onclick="phaseSkip()">Skip to latest</button>`;
+  bar.classList.add('show');
+}
+window.phasePauseToggle = ()=>{ state.phase.paused = !state.phase.paused; updatePhaseBar(); };
+window.phaseSkip = ()=>{
+  const rest = state.phase.queue.splice(0);
+  stopPhaseDrip(); updatePhaseBar();
+  if (rest.length){ appendMessages(rest, true); stickToBottom(true); }
+};
+function startPhaseDrip(){
+  stopPhaseDrip();
+  if (!state.phase.queue.length){ updatePhaseBar(); return; }
+  updatePhaseBar();
+  state.phase.timer = setInterval(()=>{
+    if (state.phase.paused) return;
+    if (!state.phase.queue.length){ stopPhaseDrip(); updatePhaseBar(); return; }
+    if (Date.now() - state.phase.last < state.phase.gap) return;
+    state.phase.last = Date.now();
+    appendMessages([state.phase.queue.shift()], true);
+    updatePhaseBar();
+    if (!state.phase.queue.length){ stopPhaseDrip(); updatePhaseBar(); }
+  }, 250);
+}
+
+/* incremental poll — no scroll jump, no full re-render */
+let polling = false;
+async function poll(){
+  if (!state.groupId || polling || !$('authGate') || document.hidden) return;
+  if (!$('authGate').classList.contains('show')) { /* logged in */ } else return;
+  polling = true;
+  try {
+    const fresh = await api(`/api/groups/${state.groupId}/messages?since_id=${state.lastMsgId}`);
+    if (fresh.length){ appendMessages(fresh); }
+    const typing = await api(`/api/groups/${state.groupId}/typing`);
+    renderTyping(typing);
+    const ib = await api(`/api/groups/${state.groupId}/inbox?scope=all`);
+    if (ib.length !== state.inbox.length){ state.inbox = ib; renderInbox(); renderInboxBadge(); }
+    await loadReactions();
+  } catch(e){} finally { polling = false; }
+}
+
+/* ---------- chat ---------- */
+const chatBox = () => $('chatScroll');
+function nearBottom(){ const b = chatBox(); return b.scrollHeight - b.scrollTop - b.clientHeight < 90; }
+function stickToBottom(force){
+  if (force || nearBottom()){ chatBox().scrollTop = chatBox().scrollHeight; $('newMsgPill').classList.remove('show'); }
+}
+chatBox().addEventListener('scroll', ()=>{ if (nearBottom()) $('newMsgPill').classList.remove('show'); });
+$('newMsgPill') && 0;
+function ensurePill(){
+  if (!$('newMsgPill')){
+    const p = document.createElement('button'); p.id = 'newMsgPill';
+    p.onclick = ()=>stickToBottom(true);
+    $('view-chat').appendChild(p);
+  }
+  if (!$('slashPop')){
+    const s = document.createElement('div'); s.id = 'slashPop';
+    $('view-chat').appendChild(s);
+  }
+  if (!$('typingBar')){
+    const t = document.createElement('div'); t.id = 'typingBar';
+    const cw = document.querySelector('.composer-wrap'); cw.prepend(t);
+  }
+  if (!$('replyBar')){
+    const r = document.createElement('div'); r.id = 'replyBar';
+    document.querySelector('.composer-wrap').prepend(r);
+  }
+  for (const [id, view] of [['emojiPop','view-chat'],['rxPop','view-chat'],['phaseBar','view-chat']]){
+    if (!$(id)){ const el = document.createElement(id==='phaseBar'?'div':'div'); el.id = id; $(view).appendChild(el); }
+  }
+  if (!$('emojiBtn')){
+    const b = document.createElement('button');
+    b.className = 'compose-btn'; b.id = 'emojiBtn'; b.title = 'Emoji'; b.textContent = '☺';
+    b.style.fontSize = '17px';
+    b.onclick = (e)=>{
+      e.stopPropagation();
+      const pop = $('emojiPop');
+      pop.innerHTML = EMOJI_SET.map(x=>`<button data-e="${x}">${x}</button>`).join('');
+      pop.classList.toggle('show');
+      pop.querySelectorAll('button').forEach(q=>q.onclick=()=>{
+        const inp = $('messageInput');
+        const s = inp.selectionStart||inp.value.length;
+        inp.value = inp.value.slice(0,s)+q.dataset.e+inp.value.slice(inp.selectionEnd||s);
+        inp.focus(); pop.classList.remove('show');
+      });
+    };
+    document.querySelector('.composer').insertBefore(b, $('sendButton'));
+  }
+}
+function dayLabel(iso){
+  try { const d = new Date(iso); const today = new Date();
+    if (d.toDateString()===today.toDateString()) return 'Today';
+    const y = new Date(today); y.setDate(y.getDate()-1);
+    if (d.toDateString()===y.toDateString()) return 'Yesterday';
+    return d.toLocaleDateString(undefined,{month:'short',day:'numeric'});
+  } catch(e){ return ''; }
+}
+/* In-chat cards: tappable tasks, fillable forms, confirmable agent runs */
+function chatCard(m){
+  const p = m.payload||{};
+  if (p.task_id){
+    const t = (state.tasks||[]).find(x=>x.id===p.task_id);
+    const title = t ? t.title : ('Task #'+p.task_id);
+    const sub = t ? `${esc(t.description||'')} ${esc(t.payout_text||'')}`.trim() : esc(m.body);
+    return `<div class="gentle-card"><div class="card-main"><div class="card-icon"><svg class="icon" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg></div><div class="card-copy"><div class="card-label">Task · validated live</div><h3>${esc(title)}</h3><p>${sub}</p></div></div><div class="card-status">Checked against your status, location and availability</div><div class="card-actions"><button class="primary" onclick="acceptFirst(${p.task_id})">I'm available</button><button class="quiet" onclick="gotoView('tasks')">Details</button><button class="quiet" onclick="shareTaskCard(${p.task_id})">Share</button><span class="audience">${t?`${t.responded}/${t.offered} responded`:''}</span></div></div>`;
+  }
+  if (p.form_id){
+    return `<div class="gentle-card"><div class="card-main"><div class="card-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M7 3h10l3 3v15H4V3zM8 9h8"/></svg></div><div class="card-copy"><div class="card-label">Form · writes to tables</div><h3>${esc(p.title||('Form #'+p.form_id))}</h3><p>${esc(p.blurb||'Fill it in — answers classify you automatically')}</p></div></div><div class="card-actions"><button class="primary" onclick="openFormModal(${p.form_id})">Start form</button><button class="quiet" onclick="shareFormCard(${p.form_id})">Share</button></div></div>`;
+  }
+  if (p.agent_run_id){
+    return `<div class="gentle-card"><div class="card-main"><div class="card-icon"><svg class="icon" viewBox="0 0 24 24"><rect x="5" y="7" width="14" height="12" rx="2"/><path d="M12 7V3M9 12h.01M15 12h.01"/></svg></div><div class="card-copy"><div class="card-label">Agent proposal · ${esc(p.agent||'agent')}</div><h3>${esc(m.body.replace(/^agent '.*?' proposed: /,''))}</h3><p>Validated against group rules before anything is written.</p></div></div><div class="card-actions"><button class="primary" onclick="confirmRun(${p.agent_run_id})">Confirm &amp; apply</button><button class="quiet" onclick="gotoView('agents')">Review</button></div></div>`;
+  }
+  if (p.view_id){
+    return `<div class="gentle-card"><div class="card-main"><div class="card-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M3 5h18v14H3zM8 5v14"/></svg></div><div class="card-copy"><div class="card-label">Shared dashboard · live</div><h3>${esc(p.title||('View #'+p.view_id))}</h3><p>${esc(p.blurb||'A slice of the group tables')}</p></div></div><div class="card-actions"><button class="primary" onclick="openViewFromChat(${p.view_id})">Open dashboard</button></div></div>`;
+  }
+  return '';
+}
+window.shareTaskCard = async (tid)=>{
+  try { await api(`/api/groups/${state.groupId}/tasks/${tid}/share`,{method:'POST',body:'{}'}); toast('Task posted in chat'); await loadMessages(true); }
+  catch(e){ toast(e.message); }
+};
+window.shareFormCard = async (fid)=>{
+  try { await api(`/api/groups/${state.groupId}/forms/${fid}/share`,{method:'POST',body:'{}'}); toast('Form posted in chat'); await loadMessages(true); }
+  catch(e){ toast(e.message); }
+};
+function msgNode(m){
+  const mine = m.member_id===state.memberId;
+  const d = document.createElement('div');
+  if (m.kind==='system'||m.kind==='schedule'||m.kind==='status'){
+    d.className='system'; d.dataset.mid=m.id; d.textContent=m.body; return d;
+  }
+  d.className = 'message'+(mine?' mine':'')+(m._pending?' msg-pending':'');
+  d.dataset.mid = m.id;
+  let extra = '';
+  const rq = m.payload?.reply_to;
+  if (rq) extra += `<div class="quote" onclick="jumpToMsg(${rq.id})"><strong>${esc(rq.author)}</strong><span>${esc(rq.body)}</span></div>`;
+  if (m.payload?.forwarded_from) extra += `<span class="fwd-label">Forwarded from ${esc(m.payload.forwarded_from.author||'another group')}</span>`;
+  if ((m.kind==='task'||m.kind==='form'||m.kind==='agent'||m.kind==='view')&&m.payload) extra += chatCard(m);
+  if (m.kind==='query'&&m.payload?.count!=null) extra += `<div class="query"><div class="query-line">filter ${esc(JSON.stringify(m.payload.filter||{}))}</div><div class="query-results"><div><strong>${m.payload.count}</strong><span>match</span></div><div><strong>${m.payload.avg_rating??'—'}</strong><span>avg</span></div></div></div>`;
+  if (m.payload?.suggested_table) extra += `<div class="system" style="margin:8px 0 0">Structured as → ${esc(m.payload.suggested_table)}</div>`;
+  d.innerHTML = `<div class="avatar">${esc((m.author||'P').slice(0,2).toUpperCase())}</div>
+    <div class="message-content"><div class="message-meta"><strong>${esc(m.author)}</strong><span>${esc((m.at||'').slice(11,16))}</span>${m._pending?'<span>· sending…</span>':''}${m._failed?'<span style="color:#b3261e">· failed — click to retry</span>':''}</div>
+    <div class="bubble"><p>${esc(m.body)}</p></div>${m.kind==='file'?fileCard(m):''}${extra}<div class="rx-row" data-rx="${m.id}"></div>
+    ${m._pending||m._failed?'':`<div class="msg-actions"><button class="msg-act" title="Reply" onclick="replyTo(${m.id})">↩</button><button class="msg-act" title="React" onclick="reactTo(${m.id},this)">☺</button><button class="msg-act" title="Forward" onclick="forwardTo(${m.id})">➦</button></div>`}</div>`;
+  if (m._failed) d.querySelector('.bubble').onclick = ()=>{ d.remove(); sendMessage(m.body); };
+  paintRx(m.id);
+  return d;
+}
+function fileCard(m){
+  const p = m.payload||{};
+  const url = p.url||'';
+  const isImg = (p.mime||'').startsWith('image/') || /\.(jpe?g|png|gif|webp)$/i.test(url);
+  if (isImg && url) return `<a href="${esc(url)}" target="_blank"><img src="${esc(url)}" alt="${esc(p.filename||'image')}" style="max-width:min(320px,100%);border-radius:8px;margin-top:6px;display:block"></a>`;
+  const kb = p.size ? Math.max(1, Math.round(p.size/1024)) + ' KB' : '';
+  return `<a href="${esc(url)}" target="_blank" style="display:flex;align-items:center;gap:8px;margin-top:6px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;text-decoration:none;color:var(--ink)"><span style="font-size:20px">📎</span><span><strong style="font-size:12px">${esc(p.filename||m.body)}</strong><br><span style="font-size:11px;color:var(--muted)">${kb} · tap to open</span></span></a>`;
+}
+window.jumpToMsg = (id)=>{
+  const n = document.querySelector(`[data-mid="${id}"]`);
+  if (!n) return toast('Original message is not loaded');
+  n.scrollIntoView({behavior:'smooth', block:'center'});
+  n.classList.remove('flash'); void n.offsetWidth; n.classList.add('flash');
+};
+
+/* ---------- reply / react / forward / emoji ---------- */
+const RX_SET = ['✅','👀','⏳','🙏','⚠️','❤️'];
+const EMOJI_SET = ['😀','😂','😅','😮','😢','😡','👍','👎','🙏','👏','🎉','✅','👀','⏳','⚠️','❤️','🔥','🚚','📦','💰'];
+state.replyTo = null;
+state.reactions = {};
+window.replyTo = (id)=>{
+  const m = state.msgs.find(x=>x.id===id); if(!m) return;
+  state.replyTo = {id:m.id, author:m.author, body:(m.body||'').slice(0,120)};
+  const bar = $('replyBar');
+  bar.innerHTML = `<div style="flex:1"><strong>${esc(m.author)}</strong><br><span style="color:var(--ink-secondary)">${esc(state.replyTo.body)}</span></div><button class="icon-btn" onclick="cancelReply()">✕</button>`;
+  bar.classList.add('show');
+  $('messageInput').focus();
+};
+window.cancelReply = ()=>{ state.replyTo = null; $('replyBar')?.classList.remove('show'); };
+window.reactTo = (id, btn)=>{
+  state.reactTarget = id;
+  let pop = $('rxPop');
+  pop.innerHTML = RX_SET.map(e=>`<button onclick="sendRx('${e}')">${e}</button>`).join('');
+  pop.classList.add('show');
+};
+window.sendRx = async (emoji)=>{
+  $('rxPop')?.classList.remove('show');
+  const id = state.reactTarget; if(!id) return;
+  try { await api(`/api/messages/${id}/reactions`,{method:'POST',body:JSON.stringify({emoji})}); await loadReactions(); }
+  catch(e){ toast(e.message); }
+};
+window.forwardTo = async (id)=>{
+  const others = state.groups.filter(g=>g.id!==state.groupId);
+  if (!others.length) return toast('Join another group first — forwarding is for other groups');
+  const v = await ask('Forward message', [{label:'To group',type:'select',options:others.map(g=>g.name)}], 'Forward');
+  if (!v) return;
+  const target = others.find(g=>g.name===v[0]);
+  try { await api(`/api/messages/${id}/forward`,{method:'POST',body:JSON.stringify({to_group_id:target.id})}); toast('Forwarded to '+target.name); }
+  catch(e){ toast(e.message); }
+};
+function paintRx(mid){
+  const row = document.querySelector(`[data-rx="${mid}"]`); if(!row) return;
+  const list = (state.reactions[mid]||[]);
+  const agg = {};
+  list.forEach(r=>{ agg[r.emoji] = agg[r.emoji]||{n:0,mine:false}; agg[r.emoji].n++; if(r.member_id===state.memberId) agg[r.emoji].mine=true; });
+  row.innerHTML = Object.entries(agg).map(([e,a])=>`<button class="rx-chip ${a.mine?'mine':''}" onclick="reactTo(${mid},this);sendRx('${e}')">${e} ${a.n}</button>`).join('');
+}
+async function loadReactions(){
+  try {
+    const all = await api(`/api/groups/${state.groupId}/reactions`);
+    const map = {};
+    all.forEach(r=>{ (map[r.message_id] = map[r.message_id]||[]).push(r); });
+    state.reactions = map;
+    Object.keys(map).forEach(paintRx);
+  } catch(e){}
+}
+window.openViewFromChat = async (vid)=>{
+  showView('views');
+  await loadViews(); renderViews();
+  setTimeout(()=>openView(vid), 150);
+};
+window.shareView = async (vid)=>{
+  try { await api(`/api/groups/${state.groupId}/views/${vid}/share`,{method:'POST',body:'{}'}); toast('Dashboard shared in chat'); await loadMessages(true); }
+  catch(e){ toast(e.message); }
+};
+window.publishView = async (vid)=>{
+  try {
+    const r = await api(`/api/views/${vid}/publish`,{method:'POST',body:'{}'});
+    const link = `${location.origin}${r.url}`;
+    const v = await ask('Page published — frozen snapshot', [{type:'info', html:`Anyone with this link sees the page, no login needed:<br><code style="font-size:12px;word-break:break-all">${esc(link)}</code><br><br>${r.rows} rows frozen at publish time. Re-publish for fresh data.`}], 'Copy link');
+    if (v !== null){ (await copyText(link)) ? toast('Page link copied') : toast('Copy failed — long-press the link'); }
+  } catch(e){ toast(e.message); }
+};
+/* composer emoji picker */
+document.addEventListener('click', e=>{
+  if (!e.target.closest('#emojiPop') && !e.target.closest('#emojiBtn')) $('emojiPop')?.classList.remove('show');
+  if (!e.target.closest('#rxPop') && !e.target.closest('.msg-act')) $('rxPop')?.classList.remove('show');
+});
+async function loadMessages(silent, initial){
+  ensurePill();
+  stopPhaseDrip();
+  const msgs = await api(`/api/groups/${state.groupId}/messages?limit=100`);
+  state.phase.queue = []; state.phase.paused = false;
+  if (initial && state.phase.enabled){
+    const seen = (store.get('platform_seen',{}))[state.groupId] || 0;
+    const older = msgs.filter(m=>m.id <= seen);
+    const fresh = msgs.filter(m=>m.id > seen);
+    state.msgs = older.concat(fresh.filter(m=>m.member_id===state.memberId)).sort((a,b)=>a.id-b.id);
+    state.phase.queue = fresh.filter(m=>m.member_id!==state.memberId);
+    state.phase.total = state.phase.queue.length;
+    state.phase.last = 0;
+  } else {
+    state.msgs = msgs;
+  }
+  state.lastMsgId = msgs.length ? msgs[msgs.length-1].id : 0;
+  state.lastMsgIdByGroup = state.lastMsgIdByGroup||{};
+  state.lastMsgIdByGroup[state.groupId] = state.lastMsgId;
+  renderChat(); updatePhaseBar();
+  if (initial && state.phase.enabled) startPhaseDrip();
+  else if (!silent) stickToBottom(true);
+  else stickToBottom(false);
+}
+function renderChat(){
+  ensurePill();
+  const box = chatBox();
+  box.innerHTML = '';
+  let lastDay = '';
+  for (const m of state.msgs){
+    const day = dayLabel(m.at);
+    if (day && day!==lastDay){ lastDay = day; const s = document.createElement('div'); s.className='day-sep'; s.textContent = day; box.appendChild(s); }
+    box.appendChild(msgNode(m));
+  }
+  if (!state.msgs.length) box.innerHTML = `<div class="empty-state">No messages yet — say hi, or try <code>/query</code>, <code>/task</code>, <code>/form</code>.</div>`;
+}
+function appendMessages(fresh, fromDrip){
+  if (state.phase.enabled && !fromDrip){
+    const unseen = fresh.filter(m=>!state.msgs.some(x=>x.id===m.id) && !state.phase.queue.some(x=>x.id===m.id));
+    const others = unseen.filter(m=>m.member_id!==state.memberId);
+    const mine = unseen.filter(m=>m.member_id===state.memberId);
+    if (others.length){ state.phase.queue.push(...others); state.phase.total += others.length; startPhaseDrip(); }
+    if (!mine.length) return;
+    fresh = mine;
+  }
+  const box = chatBox();
+  const wasNear = nearBottom();
+  for (const m of fresh){
+    if (state.msgs.some(x=>x.id===m.id)) continue;
+    state.msgs.push(m);
+    const day = dayLabel(m.at);
+    const days = [...box.querySelectorAll('.day-sep')].map(x=>x.textContent);
+    if (day && !days.includes(day)){ const s=document.createElement('div'); s.className='day-sep'; s.textContent=day; box.appendChild(s); }
+    box.appendChild(msgNode(m));
+  }
+  state.lastMsgId = state.msgs.length ? state.msgs[state.msgs.length-1].id : state.lastMsgId;
+  state.lastMsgIdByGroup = state.lastMsgIdByGroup||{};
+  state.lastMsgIdByGroup[state.groupId] = state.lastMsgId;
+  const pill = $('newMsgPill');
+  if (wasNear){ box.scrollTop = box.scrollHeight; }
+  else {
+    const others = fresh.filter(m=>m.member_id!==state.memberId);
+    if (others.length){ pill.textContent = `↓ ${others.length} new message${others.length>1?'s':''}`; pill.classList.add('show'); }
+  }
+  markSeen(); renderGroupList();
+}
+function renderTyping(names){
+  const bar = $('typingBar'); if (!bar) return;
+  bar.textContent = names && names.length ? `${names.join(', ')} ${names.length>1?'are':'is'} typing…` : '';
+}
+async function sendMessage(retryBody){
+  const inp = $('messageInput');
+  const text = (retryBody ?? inp.value).trim();
+  if (!text) return;
+  const replyId = (!retryBody && state.replyTo) ? state.replyTo.id : (retryBody?._reply || null);
+  const temp = {id:'tmp-'+Date.now(), author:'You', member_id:state.memberId, kind:'chat', body:text, at:new Date().toISOString(), _pending:true,
+    payload: state.replyTo&&!retryBody ? {reply_to:{id:state.replyTo.id, author:state.replyTo.author, body:state.replyTo.body}} : {}};
+  state.msgs.push(temp);
+  chatBox().appendChild(msgNode(temp));
+  stickToBottom(true);
+  if (!retryBody) { inp.value=''; inp.style.height='auto'; hideSlash(); cancelReply(); }
+  try {
+    const r = await api(`/api/groups/${state.groupId}/messages`,{method:'POST',body:JSON.stringify({body:text, reply_to:replyId})});
+    state.msgs = state.msgs.filter(m=>m.id!==temp.id);
+    [...chatBox().querySelectorAll(`[data-mid="${temp.id}"]`)].forEach(n=>n.remove());
+    if (r.slash){
+      toast('/'+r.slash+' done');
+      const fresh = await api(`/api/groups/${state.groupId}/messages?since_id=${state.lastMsgId}`);
+      if (fresh.length) appendMessages(fresh); else { await refreshAll(); }
+      if (r.slash==='task'){ await loadTasks(); renderTasks(); }
+      if (r.slash==='form'){ await loadForms(); renderForms(); }
+    } else {
+      const fresh = await api(`/api/groups/${state.groupId}/messages?since_id=${state.lastMsgId}`);
+      appendMessages(fresh.length?fresh:[{...temp, id:r.id, _pending:false}]);
+    }
+  } catch(e){
+    state.msgs = state.msgs.filter(m=>m.id!==temp.id);
+    [...chatBox().querySelectorAll(`[data-mid="${temp.id}"]`)].forEach(n=>n.remove());
+    const failed = {...temp, _pending:false, _failed:true};
+    state.msgs.push(failed); chatBox().appendChild(msgNode(failed)); stickToBottom(true);
+    toast('Send failed: '+e.message);
+  }
+}
+$('sendButton').addEventListener('click',()=>sendMessage());
+$('messageInput').addEventListener('keydown',e=>{
+  if (slashOpen && ['ArrowDown','ArrowUp','Enter','Escape'].includes(e.key)){ slashKey(e); return; }
+  if (e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); }
+});
+$('messageInput').addEventListener('input',()=>{
+  const inp = $('messageInput');
+  inp.style.height='auto'; inp.style.height=Math.min(inp.scrollHeight,120)+'px';
+  slashHint(inp.value);
+  const now = Date.now();
+  if (now - state.typingThrottle > 3000){ state.typingThrottle = now; api(`/api/groups/${state.groupId}/typing`,{method:'POST',body:'{}'}).catch(()=>{}); }
+});
+$('createButton').addEventListener('click',()=>$('createMenu').classList.toggle('show'));
+document.querySelectorAll('.create-option').forEach(b=>b.addEventListener('click',()=>{
+  $('createMenu').classList.remove('show');
+  const t=b.dataset.create;
+  if (t==='task'){ window.taskModalFlow(); return; }
+  if (t==='form'){ window.formBuilderFlow(); return; }
+  if (t==='sharetask'){ shareExisting('task'); return; }
+  if (t==='shareform'){ shareExisting('form'); return; }
+  $('messageInput').value = '/query ';
+  $('messageInput').focus(); slashHint($('messageInput').value);
+}));
+window.shareExisting = async (kind)=>{
+  const list = kind==='task' ? state.tasks : state.forms;
+  if (!list.length) return toast('No '+kind+'s yet — create one first');
+  const v = await ask('Post an existing '+kind, [{label:kind[0].toUpperCase()+kind.slice(1),type:'select',options:list.map(x=>`#${x.id} ${x.title}`)}], 'Post in chat');
+  if (!v) return;
+  const id = +/^#(\d+)/.exec(v[0])[1];
+  try {
+    await api(`/api/groups/${state.groupId}/${kind}s/${id}/share`,{method:'POST',body:'{}'});
+    toast('Posted in chat'); await loadMessages(true);
+  } catch(e){ toast(e.message); }
+};
+$('attachBtn').addEventListener('click',()=>{
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*,.pdf,.doc,.docx,.txt,.zip';
+  inp.onchange = async ()=>{
+    const f = inp.files[0]; if (!f) return;
+    if (f.size > 10*1024*1024) return toast('File too large (max 10 MB)');
+    toast('Uploading ' + f.name + '…');
+    try {
+      const fd = new FormData(); fd.append('file', f);
+      const headers = {}; if (TOKEN) headers['Authorization'] = 'Bearer ' + TOKEN;
+      const r = await fetch(`/api/groups/${state.groupId}/uploads`, {method:'POST', headers, body:fd});
+      if (r.status === 401){ showAuth('Session expired — log in again.'); return; }
+      const up = await r.json();
+      if (!r.ok) throw new Error(up.detail || 'upload failed');
+      await api(`/api/groups/${state.groupId}/messages`, {method:'POST', body:JSON.stringify({body:up.filename, kind:'file', file:up})});
+      await loadMessages(true);
+    } catch(e){ toast('Upload failed: ' + e.message); }
+  };
+  inp.click();
+});
+
+/* slash autocomplete */
+const SLASHES = [['/task','post a tappable task'],['/form','create a form'],['/query','ask the group data'],['/agent','run an agent'],['/schedule','create a schedule']];
+let slashOpen = false, slashSel = 0;
+function slashHint(v){
+  const pop = $('slashPop'); if (!pop) return;
+  if (!v.startsWith('/')){ pop.classList.remove('show'); slashOpen=false; return; }
+  const opts = SLASHES.filter(([c])=>c.startsWith(v.split(' ')[0]));
+  if (!opts.length){ pop.classList.remove('show'); slashOpen=false; return; }
+  slashOpen = true; slashSel = 0;
+  pop.innerHTML = opts.map(([c,d],i)=>`<button class="slash-item ${i===0?'sel':''}" data-c="${c}"><code>${c}</code><span>${d}</span></button>`).join('');
+  pop.classList.add('show');
+  pop.querySelectorAll('.slash-item').forEach(b=>b.onclick=()=>{ $('messageInput').value=b.dataset.c+' '; $('messageInput').focus(); hideSlash(); });
+}
+function hideSlash(){ $('slashPop')?.classList.remove('show'); slashOpen=false; }
+function slashKey(e){
+  e.preventDefault();
+  const items = [...document.querySelectorAll('#slashPop .slash-item')];
+  if (e.key==='Escape') hideSlash();
+  if (e.key==='ArrowDown'||e.key==='ArrowUp'){ slashSel = (slashSel + (e.key==='ArrowDown'?1:-1) + items.length) % items.length; items.forEach((b,i)=>b.classList.toggle('sel', i===slashSel)); }
+  if (e.key==='Enter'){ const c = items[slashSel]?.dataset.c; if (c){ $('messageInput').value = c+' '; hideSlash(); } }
+}
+
+/* ---------- data ---------- */
+async function loadTables(){
+  state.tablesFull = await api(`/api/groups/${state.groupId}/tables`);
+  if (!state.tablesFull.some(t=>state.activeTable&&t.id===state.activeTable.id)) state.activeTable = state.tablesFull[0];
+  renderDataTabs();
+}
+function renderDataTabs(){
+  $('dataTabs').innerHTML = state.tablesFull.map(t=>`<button class="table-tab ${state.activeTable&&t.id===state.activeTable.id?'active':''}" data-t="${t.id}">${esc(t.name)} · ${t.rows}</button>`).join('')
+    + (state.tablesFull.length<5 && state.myRole==='admin' ? `<button class="table-tab" id="addTableBtn" style="color:var(--brand)">+ table</button>` : `<span style="font-size:11px;color:var(--muted);padding:8px">${state.tablesFull.length}/5 tables</span>`);
+  document.querySelectorAll('#dataTabs [data-t]').forEach(b=>b.addEventListener('click',async()=>{ state.activeTable=state.tablesFull.find(x=>x.id==b.dataset.t); renderDataTabs(); await loadActiveTable(); }));
+  const ab = $('addTableBtn'); if (ab) ab.onclick = async()=>{
+    const v = await ask('New table', [{label:'Name', hint:'e.g. Sessions'}], 'Create');
+    if (!v||!v[0]) return;
+    try { await api(`/api/groups/${state.groupId}/tables`,{method:'POST',body:JSON.stringify({name:v[0],columns:[{name:'title',label:'Title',type:'text',required:true}]})}); await loadTables(); toast('Table created'); }
+    catch(e){ toast(e.message); }
+  };
+}
+let tableSearch = '';
+$('tableSearchBtn').onclick = async ()=>{
+  const v = await ask('Search table', [{label:'Filter rows', hint:'type to filter…', value:tableSearch}], 'Filter');
+  if (v){ tableSearch = v[0].toLowerCase(); loadActiveTable(); }
+};
+$('filterBtn').onclick = ()=>{ tableSearch=''; loadActiveTable(); toast('Filter cleared'); };
+async function loadActiveTable(){ await loadActiveTableInto(); }
+async function loadActiveTableInto(){
+  if (!state.activeTable) return;
+  const d = await api(`/api/tables/${state.activeTable.id}/records`);
+  state.activeRows = d.rows;
+  const cols = d.table.columns||[];
+  const rows = d.rows.filter(r=>!tableSearch || JSON.stringify(r.data).toLowerCase().includes(tableSearch) || (r.member||'').toLowerCase().includes(tableSearch));
+  const canDel = state.myRole==='admin';
+  $('mainTable').querySelector('thead tr').innerHTML = `<th class="rownum">#</th>`+cols.map(c=>`<th>${esc(c.label||c.name)}</th>`).join('')+`<th>Member</th>${canDel?'<th></th>':''}`;
+  $('tableBody').innerHTML = rows.map((r,i)=>`<tr><td class="rownum">${i+1}</td>`+cols.map(c=>`<td>${esc(r.data?.[c.name]??'')}</td>`).join('')+`<td>${esc(r.member)}</td>${canDel?`<td><button onclick="delRecord(${r.id})" style="color:var(--muted)">×</button></td>`:''}</tr>`).join('')
+    || `<tr><td colspan="12"><div class="empty-state">No rows yet — submit a form or let an agent write here.</div></td></tr>`;
+  document.querySelector('.schema-bar').innerHTML = `<strong>${esc(d.table.name)} · ${d.rows.length} rows.</strong>&nbsp;Every row links to the members hub.${canDel?` <button id="delTableBtn" style="margin-left:auto;color:#b3261e">Delete table</button>`:''}`;
+  const dt = $('delTableBtn'); if (dt) dt.onclick = async()=>{
+    if (!confirm(`Delete table "${d.table.name}" and all its rows?`)) return;
+    await api(`/api/tables/${d.table.id}`,{method:'DELETE'}); await loadTables(); toast('Table deleted');
+  };
+}
+window.delRecord = async (rid)=>{ if(!confirm('Delete this record?')) return; await api(`/api/records/${rid}`,{method:'DELETE'}); loadActiveTable(); };
+$('addRecordBtn').onclick = ()=>fillFirstForm();
+$('addTableRowBtn').onclick = ()=>fillFirstForm();
+$('importDataBtn').onclick = ()=>toast('CSV import: use Forms below for now');
+async function fillFirstForm(){ if(!state.forms.length){ toast('No forms yet — create one in Forms'); showView('forms'); return; } openFormModal(state.forms[0].id); }
+
+/* ---------- tasks ---------- */
+async function loadTasks(){ state.tasks = await api(`/api/groups/${state.groupId}/tasks`); }
+function renderTasks(){
+  const grid = document.querySelector('#view-tasks .collection-grid'); if(!grid) return;
+  if (!state.tasks.length){ grid.innerHTML = `<div class="empty-state">No tasks yet. Post one from chat: <code>/task Airport shift</code></div>`; return; }
+  grid.innerHTML = state.tasks.map(t=>`<article class="item-card"><div class="item-top"><div><h3>${esc(t.title)}</h3><p>${esc(t.description||'')} ${esc(t.payout_text||'')}</p><p style="color:var(--muted);font-size:11px">audience ${esc(JSON.stringify(t.audience||{}))}${t.rule_id?' · rule #'+t.rule_id:''}</p></div></div><div class="item-foot"><span class="tag ${t.status==='live'?'green':'yellow'}">${esc(t.status)}</span>${t.responded} of ${t.offered} responded</div><div style="display:flex;gap:6px;margin-top:8px"><button class="quiet" onclick="showOffers(${t.id})">Offers</button><button class="quiet" onclick="acceptFirst(${t.id})">Accept as me</button><button class="quiet" onclick="shareTaskCard(${t.id})">Share to chat</button></div><div id="off-${t.id}" style="margin-top:6px;font-size:12px"></div></article>`).join('');
+  const b=$('taskCountBadge'); if(b) b.textContent=state.tasks.length;
+}
+window.showOffers = async (tid)=>{
+  const o = await api(`/api/tasks/${tid}/offers`);
+  $('off-'+tid).innerHTML = o.map(x=>`${esc(x.member)} — <b>${x.status}</b> <button onclick="respondOffer(${x.id},'accept')">accept</button> <button onclick="respondOffer(${x.id},'decline')">decline</button>`).join('<br>') || 'No offers — eligibility rule/tags filtered everyone out.';
+};
+window.acceptFirst = async (tid)=>{
+  const o = await api(`/api/tasks/${tid}/offers`);
+  const mine = o.find(x=>x.member_id===state.memberId)||o[0];
+  if(!mine) return toast('No offer for you (rule/tags filtered you out)');
+  await respondOffer(mine.id,'accept');
+};
+window.respondOffer = async (oid,dec)=>{
+  try{ await api(`/api/offers/${oid}/respond`,{method:'POST',body:JSON.stringify({decision:dec})}); toast(dec==='accept'?'Accepted ✓':'Declined'); await loadTasks(); renderTasks(); loadInbox(); }
+  catch(e){ toast('Blocked: '+e.message); }
+};
+/* Inline validation: reuse a rule from the dropdown or write one in plain words (admins). */
+function ruleFieldDefs(){
+  const opts = ['— no validation —'].concat((state.rules||[]).map(r=>`#${r.id} ${r.name} (${r.status})`));
+  const fields = [{label:'Validation rule',type:'select',options:opts,value:opts[0]}];
+  if (state.myRole==='admin') fields.push({label:'Or write a new rule (plain words)',hint:'e.g. Only verified couriers with rating above 4.7'});
+  return fields;
+}
+async function resolveRule(selected, nl){
+  if (nl && nl.trim()){
+    if (state.myRole!=='admin'){ toast('Only admins can add new rules — pick an existing one'); return 'BLOCK'; }
+    const prev = await api(`/api/groups/${state.groupId}/rules/compile`,{method:'POST',body:JSON.stringify({natural_language:nl})});
+    const created = await api(`/api/groups/${state.groupId}/rules`,{method:'POST',body:JSON.stringify({name:nl.slice(0,60),natural_language:nl,compiled:prev.compiled,explanation:prev.explanation,model:prev.model})});
+    await api(`/api/rules/${created.id}/confirm`,{method:'POST',body:'{}'});
+    await loadRules();
+    toast('Rule compiled + confirmed');
+    return created.id;
+  }
+  const m = /^#(\d+)/.exec(selected||'');
+  return m ? +m[1] : null;
+}
+window.taskModalFlow = async ()=>{
+  const v = await ask('New task', [{label:'Title',hint:'e.g. Airport dispatch shift'},{label:'Description',hint:'When, where, pay…'},{label:'Payout',hint:'e.g. $108'}].concat(ruleFieldDefs()), 'Post task');
+  if (!v||!v[0]) return;
+  const ruleId = await resolveRule(v[3], state.myRole==='admin'?v[4]:'');
+  if (ruleId==='BLOCK') return;
+  const r = await api(`/api/groups/${state.groupId}/tasks`,{method:'POST',body:JSON.stringify({title:v[0],description:v[1],payout_text:v[2],rule_id:ruleId})});
+  toast('Task posted, offered to '+r.offered); await loadTasks(); renderTasks(); await loadMessages(true);
+};
+$('newTaskModalBtn').onclick = ()=>window.taskModalFlow();
+
+/* ---------- forms ---------- */
+async function loadForms(){ state.forms = await api(`/api/groups/${state.groupId}/forms`); }
+function renderForms(){
+  const grid = document.querySelector('#view-forms .collection-grid'); if(!grid) return;
+  grid.innerHTML = state.forms.length ? state.forms.map(f=>`<article class="item-card"><div class="item-top"><div><h3>${esc(f.title)}</h3><p>${esc(f.description||'')}</p><p style="font-size:11px;color:var(--muted)">${(f.fields||[]).length} fields → table ${f.table_id||'—'}${f.rule_id?' · rule #'+f.rule_id:''}</p></div></div><div class="item-foot"><span class="tag green">${esc(f.status)}</span>${f.responses} responses</div><div style="margin-top:8px;display:flex;gap:6px"><button class="primary" onclick="openFormModal(${f.id})">Fill form</button><button class="quiet" onclick="shareFormCard(${f.id})">Share to chat</button></div></article>`).join('')
+    : `<div class="empty-state">No forms yet — create one to classify members and write structured rows.</div>`;
+}
+window.openFormModal = async (fid)=>{
+  const f = state.forms.find(x=>x.id===fid) || state.forms[0];
+  if (!f) return toast('No forms yet');
+  const fields = (f.fields||[]).map(fld=>{
+    if (fld.type==='select') return {label:(fld.label||fld.name)+(fld.required?' *':''), type:'select', options:fld.options||[], value:(fld.options||[])[0]};
+    return {label:(fld.label||fld.name)+(fld.required?' *':''), type:'text', hint:fld.type||'text'};
+  });
+  const v = await ask(f.title, fields.length?fields:[{label:'Answer *'}], 'Submit');
+  if (!v) return;
+  const data = {};
+  (f.fields||[]).forEach((fld,i)=>{ data[fld.name] = v[i] ?? ''; });
+  if (!(f.fields||[]).length) data.answer = v[0];
+  try{ await api(`/api/forms/${f.id}/submit`,{method:'POST',body:JSON.stringify({data})}); toast('Submitted ✓ validated'); refreshAll(); }
+  catch(e){ toast('Rejected: '+e.message); }
+};
+window.formBuilderFlow = async ()=>{
+  const tables = (state.tablesFull||[]).map(t=>`${t.id}: ${t.name}`).join('\n');
+  const v = await ask('New form', [{label:'Title',hint:'e.g. Shift completion'},{label:'Writes to table id',hint:tables},{label:'Fields (one label per line)',type:'textarea',hint:'Full name\nLicense number'}].concat(ruleFieldDefs()), 'Share in chat');
+  if (!v||!v[0]) return;
+  const ruleId = await resolveRule(v[3], state.myRole==='admin'?v[4]:'');
+  if (ruleId==='BLOCK') return;
+  const fields = (v[2]||'Answer').split('\n').map(s=>s.trim()).filter(Boolean).map(s=>({name:s.toLowerCase().replace(/[^a-z0-9]+/g,'_'),label:s,type:'text',required:true}));
+  await api(`/api/groups/${state.groupId}/forms`,{method:'POST',body:JSON.stringify({title:v[0],table_id:v[1]?+v[1]:state.activeTable?.id,fields,rule_id:ruleId})});
+  await loadForms(); renderForms(); await loadMessages(true);
+  toast('Form shared in chat');
+};
+$('newFormModalBtn').onclick = ()=>window.formBuilderFlow();
+$('triggerVerificationFormBtn')?.addEventListener('click',()=>openFormModal());
+
+/* ---------- views as dashboards ---------- */
+async function loadViews(){ state.views = await api(`/api/groups/${state.groupId}/views`); }
+function renderViews(){
+  const sec = $('view-views'); if(!sec) return;
+  let dash = sec.querySelector('#dashStats');
+  if (!dash){ dash = document.createElement('div'); dash.id='dashStats'; dash.style.padding='18px 18px 0'; sec.querySelector('.collection-scroll').prepend(dash); }
+  const d = state.dash||{};
+  dash.innerHTML = `<div class="stat-cards">
+    <div class="stat-card"><strong>${d.members??'—'}</strong><span>members</span></div>
+    <div class="stat-card"><strong>${d.tasks??'—'}</strong><span>tasks</span></div>
+    <div class="stat-card"><strong>${d.open_offers??'—'}</strong><span>open offers</span></div>
+    <div class="stat-card"><strong>${d.records??'—'}</strong><span>records</span></div>
+    <div class="stat-card"><strong>${d.schedules??'—'}</strong><span>schedules</span></div></div>`;
+  const grid = sec.querySelector('.collection-grid');
+  grid.innerHTML = state.views.map(v=>`<article class="item-card"><div><h3>${esc(v.title)}</h3><p>${esc(v.description||'')}</p><p style="font-size:11px;color:var(--muted)">${v.stat?.rows??'?'} rows${v.stat?.avg!=null?' · avg '+v.stat.avg:''} · ${esc(v.template)}</p></div><div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap"><button class="quiet" onclick="openView(${v.id})">Open dashboard</button><button class="quiet" onclick="shareView(${v.id})">Share to chat</button><button class="quiet" onclick="publishView(${v.id})">Publish page</button></div><div id="vw-${v.id}" style="margin-top:6px;font-size:12px;overflow-x:auto"></div></article>`).join('')
+    + `<article class="item-card"><h3>Generate with AI</h3><p>Describe the slice you want to see.</p><input id="genPrompt" placeholder="verified drivers in Lagos" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px"><button class="primary" style="margin-top:8px" onclick="genView()">Generate</button></article>`;
+}
+window.openView = async (vid)=>{
+  const d = await api(`/api/views/${vid}/rows`);
+  $('vw-'+vid).innerHTML = d.rows.length
+    ? `<table class="sheet"><thead><tr>${Object.keys(d.rows[0]).map(k=>`<th>${esc(k)}</th>`).join('')}</tr></thead><tbody>${d.rows.slice(0,8).map(r=>`<tr>${Object.values(r).map(v=>`<td>${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table>${d.rows.length>8?`<p style="color:var(--muted)">+${d.rows.length-8} more rows</p>`:''}`
+    : 'No rows match this filter.';
+};
+window.genView = async ()=>{
+  const p = $('genPrompt').value; if(!p) return;
+  const v = await api(`/api/groups/${state.groupId}/views/generate`,{method:'POST',body:JSON.stringify({prompt:p})});
+  toast('Dashboard generated ('+v.model+')'); loadViews().then(renderViews);
+};
+document.querySelector('#view-views .primary')?.addEventListener('click',async()=>{
+  const v = await ask('New dashboard view', [{label:'Title',hint:'e.g. Night-shift board'}], 'Create');
+  if (!v||!v[0]) return;
+  await api(`/api/groups/${state.groupId}/views`,{method:'POST',body:JSON.stringify({title:v[0],source_table_id:state.activeTable?.id,columns:[],filter:{}})});
+  loadViews().then(renderViews);
+});
+
+/* ---------- agents ---------- */
+async function loadAgents(){
+  state.agents = await api(`/api/groups/${state.groupId}/agents`);
+  try{ state.runs = await api(`/api/agents/runs?group_id=${state.groupId}`);}catch(e){state.runs=[];}
+}
+function renderAgents(){
+  const grid = document.querySelector('#view-agents .collection-grid'); if(!grid) return;
+  grid.innerHTML = state.agents.map(a=>`<article class="item-card"><div><h3>${esc(a.name)}</h3><p>${esc(a.description||a.kind)}</p><p style="font-size:11px;color:var(--muted)">${esc(a.kind)}</p></div><div class="item-foot"><span class="tag green">Online</span>${esc((a.config?.permissions||[]).join(', ')||'read')}</div><div style="display:flex;gap:6px;margin-top:8px"><input id="q-${a.id}" placeholder="ask / match…" style="flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:6px"><button class="primary" onclick="runAgent(${a.id})">Run</button></div></article>`).join('')
+  + `<article class="item-card" style="grid-column:1/-1"><h3>Proposals — Query → Act → Return → Mutate</h3><div style="font-size:12px">${(state.runs||[]).map(r=>`<div style="border-top:1px solid var(--border);padding:6px 0"><b>run #${r.id}</b> agent ${r.agent_id} → ${esc(r.status)} · ${esc(r.note||'')}<br>${(r.items||[]).slice(0,3).map(i=>`• ${esc(i.title)} (${i.score??'—'}%)`).join('<br>')}<br><button class="primary" onclick="confirmRun(${r.id})">Confirm &amp; mutate</button> <button class="quiet" onclick="rejectRun(${r.id})">Reject</button></div>`).join('')||'No runs yet.'}</div></article>`;
+}
+window.runAgent = async (aid)=>{
+  const q = ($('q-'+aid)||{}).value||'';
+  const r = await api(`/api/agents/${aid}/run`,{method:'POST',body:JSON.stringify({query:q})});
+  toast('Agent proposed #'+r.run_id); loadAgents().then(renderAgents); loadInbox();
+};
+window.confirmRun = async (rid)=>{ try{ await api(`/api/agent-runs/${rid}/confirm`,{method:'POST',body:JSON.stringify({decision:'confirm'})}); toast('Applied ✓ validated'); refreshAll(); }catch(e){toast(e.message);} };
+window.rejectRun = async (rid)=>{ await api(`/api/agent-runs/${rid}/confirm`,{method:'POST',body:JSON.stringify({decision:'reject'})}); loadAgents().then(renderAgents); };
+document.querySelector('#view-agents .primary')?.addEventListener('click', async ()=>{
+  if (state.myRole!=='admin') return toast('Admins only');
+  const v = await ask('Connect agent', [{label:'Name',hint:'e.g. Night matcher'},{label:'Kind',type:'select',options:['analyst','job_finder','compliance','tutor_matcher','delivery_matcher','web_search']}], 'Connect');
+  if (!v) return;
+  await api(`/api/groups/${state.groupId}/agents`,{method:'POST',body:JSON.stringify({name:v[0],kind:v[1]})}); loadAgents().then(renderAgents);
+});
+
+/* ---------- schedules ---------- */
+async function loadSchedules(){ state.schedules = await api(`/api/groups/${state.groupId}/schedules`); }
+function renderSchedules(){
+  const g = $('scheduleGrid'); if(!g) return;
+  const admin = state.myRole==='admin';
+  const pulse = (state.schedules||[]).find(s=>s.name.startsWith('Pulse'));
+  let banner = $('pulseBanner');
+  if (pulse && !banner){
+    banner = document.createElement('div'); banner.id = 'pulseBanner';
+    g.parentElement.insertBefore(banner, g);
+  }
+  if (banner){
+    if (!pulse){ banner.remove(); }
+    else {
+      banner.innerHTML = `<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:12px 14px;border:1px solid var(--border);border-radius:8px;background:var(--surface)">
+        <span class="tag ${pulse.active?'green':'yellow'}" style="font-size:12px">AUTO-PILOT ${pulse.active?'ON':'OFF'}</span>
+        <div style="flex:1"><strong style="font-size:13px">${esc(pulse.name)}</strong><br><span style="font-size:11px;color:var(--muted)">next run ${esc(pulse.next_run||'—')} · last ${esc(pulse.last_run||'—')}</span></div>
+        ${admin?`<button class="primary" onclick="toggleSched(${pulse.id});setTimeout(loadSchedulesUI,400)">${pulse.active?'Turn off':'Turn on'}</button><button class="quiet" onclick="runNow(${pulse.id})">Run now</button>`:''}
+      </div>`;
+    }
+  }
+  g.innerHTML = state.schedules.length ? state.schedules.map(s=>`<article class="item-card"><div><h3>${esc(s.name)}</h3><p>${esc(s.kind)} ${esc(s.cron_expr||s.time_of_day||(s.interval_seconds?s.interval_seconds+'s':''))} → <b>${esc(s.action)}</b></p><p style="font-size:11px;color:var(--muted)">next ${esc(s.next_run||'—')} · last ${esc(s.last_run||'—')}</p></div><div class="item-foot"><span class="tag ${s.active?'green':'yellow'}">${s.active?'Active':'Paused'}</span></div><div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">${admin?`<button class="primary" onclick="runNow(${s.id})">Run now</button><button class="quiet" onclick="toggleSched(${s.id})">${s.active?'Pause':'Resume'}</button>`:''}<button class="quiet" onclick="schedRuns(${s.id})">Runs</button></div></article>`).join('')
+    : `<div class="empty-state">No schedules yet — put routine work on autopilot.</div>`;
+}
+window.loadSchedulesUI = async ()=>{ await loadSchedules(); renderSchedules(); };
+window.runNow = async (id)=>{ const r = await api(`/api/schedules/${id}/run-now`,{method:'POST',body:'{}'}); toast('Ran: '+r.status); loadSchedules().then(renderSchedules); loadInbox(); loadMessages(true); };
+window.toggleSched = async (id)=>{ await api(`/api/schedules/${id}/toggle`,{method:'POST',body:'{}'}); loadSchedules().then(renderSchedules); };
+window.schedRuns = async (id)=>{ const r = await api(`/api/schedules/${id}/runs`); $('scheduleRunsBox').innerHTML = '<b>Recent runs</b><br>'+r.map(x=>`#${x.id} ${x.status} — ${esc(JSON.stringify(x.detail).slice(0,160))}`).join('<br>'); };
+$('newScheduleBtn').onclick = async ()=>{
+  if (state.myRole!=='admin') return toast('Admins only');
+  const v = await ask('New schedule', [{label:'Name',hint:'e.g. Morning inspect'},{label:'Kind',type:'select',options:['daily','interval','weekly','cron','once']},{label:'Time HH:MM (daily/weekly) or seconds (interval) or cron',hint:'07:00'},{label:'Action',type:'select',options:['inspect','match','follow_up','report','motivate','push_inbox','create_task','run_agent']}], 'Create');
+  if (!v) return;
+  const body = {name:v[0], kind:v[1], action:v[3], action_config:{}};
+  if (v[1]==='daily'||v[1]==='weekly') body.time_of_day = v[2]||'09:00';
+  if (v[1]==='interval') body.interval_seconds = +(v[2]||3600);
+  if (v[1]==='cron') body.cron_expr = v[2]||'0 9 * * *';
+  try{ await api(`/api/groups/${state.groupId}/schedules`,{method:'POST',body:JSON.stringify(body)}); toast('Schedule created'); loadSchedules().then(renderSchedules);}catch(e){toast(e.message);}
+};
+
+/* ---------- flows ---------- */
+async function loadFlows(){ state.flows = await api(`/api/groups/${state.groupId}/redirects`); }
+function renderFlows(){
+  const g = $('flowGrid'); if(!g) return;
+  const admin = state.myRole==='admin';
+  g.innerHTML = state.flows.length ? state.flows.map(f=>`<article class="item-card"><div><h3>${esc(f.name)}</h3><p>WHEN <code>${esc(f.trigger_event)}${f.trigger_ref?' #'+f.trigger_ref:''}</code> THEN <code>${esc(f.action)}</code></p><p style="font-size:11px;color:var(--muted)">${esc(JSON.stringify(f.action_config||{}).slice(0,120))}</p></div><div class="item-foot"><span class="tag ${f.active?'green':'yellow'}">${f.active?'On':'Off'}</span></div>${admin?`<button class="quiet" onclick="toggleFlow(${f.id})">Toggle</button>`:''}</article>`).join('')
+    : `<div class="empty-state">No flows yet — chain task completion into the next step automatically.</div>`;
+}
+window.toggleFlow = async (id)=>{ await api(`/api/groups/${state.groupId}/redirects/${id}/toggle`,{method:'POST',body:'{}'}); loadFlows().then(renderFlows); };
+$('newFlowBtn').onclick = async ()=>{
+  if (state.myRole!=='admin') return toast('Admins only');
+  const v = await ask('New redirect', [{label:'Name',hint:'e.g. Accept → QR handoff'},{label:'Trigger',type:'select',options:['offer.accepted','task.accepted','task.completed','form.submitted','status.confirmed','schedule.fired','member.joined']},{label:'Action',type:'select',options:['push_inbox','push_public','create_task','write_record','run_agent']},{label:'Message / next-step text',type:'textarea',hint:'What happens next?'}], 'Create');
+  if (!v) return;
+  await api(`/api/groups/${state.groupId}/redirects`,{method:'POST',body:JSON.stringify({name:v[0],trigger_event:v[1],action:v[2],action_config:{title:v[0],body:v[3]}})});
+  loadFlows().then(renderFlows);
+};
+
+/* ---------- rules ---------- */
+async function loadRules(){ state.rules = await api(`/api/groups/${state.groupId}/rules`); }
+let lastCompiled = null;
+function renderRules(){
+  const g = $('ruleGrid'); if(!g) return;
+  const admin = state.myRole==='admin';
+  g.innerHTML = state.rules.length ? state.rules.map(r=>`<article class="item-card"><div><h3>${esc(r.name)}</h3><p style="font-size:12px">“${esc(r.natural_language)}”</p><pre style="font:11px var(--mono);background:var(--surface);padding:8px;border-radius:6px;white-space:pre-wrap">${esc(r.explanation||JSON.stringify(r.compiled))}</pre><p style="font-size:11px;color:var(--muted)">model ${esc(r.ai_model||'')} · scope ${esc(r.scope)}</p></div><div class="item-foot"><span class="tag ${r.status==='confirmed'?'green':'yellow'}">${esc(r.status)}</span></div><div style="display:flex;gap:6px;margin-top:6px"><button class="quiet" onclick="testRule(${r.id})">Test on me</button>${admin&&r.status!=='confirmed'?`<button class="primary" onclick="confirmRule(${r.id})">Confirm</button>`:''}</div></article>`).join('')
+    : `<div class="empty-state">No rules yet — write validation in plain language, confirm once, enforce forever.</div>`;
+}
+window.confirmRule = async (id)=>{ await api(`/api/rules/${id}/confirm`,{method:'POST',body:'{}'}); toast('Rule confirmed — now enforcing'); loadRules().then(renderRules); };
+window.testRule = async (id)=>{ const m = state.members.find(x=>x.id===state.memberId); const r = await api(`/api/rules/${id}/test`,{method:'POST',body:JSON.stringify({profile:m?.profile||{},submission:{}})}); toast(r.passed?'PASS ✓':'FAIL: '+r.reasons.join('; ').slice(0,140)); };
+$('previewRuleBtn').onclick = async ()=>{
+  const nl = $('ruleNL').value; if(!nl) return toast('Type the rule first');
+  const r = await api(`/api/groups/${state.groupId}/rules/compile`,{method:'POST',body:JSON.stringify({natural_language:nl})});
+  lastCompiled = r;
+  $('rulePreview').textContent = r.explanation+'\n'+JSON.stringify(r.compiled,null,1)+'\nmodel: '+r.model+(r.warning?'\n⚠ '+r.warning:'');
+};
+$('saveRuleBtn').onclick = async ()=>{
+  if (state.myRole!=='admin') return toast('Admins only');
+  const nl = $('ruleNL').value, name = $('ruleName').value||'Untitled rule';
+  if(!nl) return toast('Type the rule first');
+  const body = {name, natural_language:nl};
+  if (lastCompiled){ body.compiled = lastCompiled.compiled; body.explanation = lastCompiled.explanation; body.model = lastCompiled.model; }
+  const r = await api(`/api/groups/${state.groupId}/rules`,{method:'POST',body:JSON.stringify(body)});
+  toast('Saved as draft #'+r.id+' — confirm to enforce'); $('rulePreview').textContent=''; loadRules().then(renderRules);
+};
+$('newRuleBtn').onclick = ()=>{ showView('rules'); $('ruleNL').focus(); };
+
+/* ---------- inbox ---------- */
+async function loadInbox(silent){
+  try{ state.inbox = await api(`/api/groups/${state.groupId}/inbox?scope=all`); }catch(e){ state.inbox = []; }
+  renderInbox(); renderInboxBadge();
+}
+function renderInboxBadge(){
+  const unread = state.inbox.filter(i=>!i.is_read && (i.member_id===state.memberId || i.member_id==null)).length;
+  const b = $('inboxCountBadge'); if(b) b.textContent = unread;
+  const feed = document.querySelector('.inbox-feed');
+  if (feed) feed.innerHTML = state.inbox.slice(0,8).map(i=>`<div class="inbox-card"><h4>${esc(i.title)}</h4><p>${esc(i.body)}</p><time>${esc((i.at||'').slice(0,16).replace('T',' '))} · ${i.scope}</time></div>`).join('') || '<p style="font-size:12px;color:var(--muted)">No notifications.</p>';
+}
+function renderInbox(){
+  const g = $('inboxGrid'); if(!g) return;
+  const list = state.inbox.filter(i=>state.inboxFilter==='all'?true:state.inboxFilter==='personal'?i.member_id===state.memberId:i.member_id==null);
+  g.innerHTML = list.length ? list.map(i=>`<article class="item-card" style="${i.is_read?'opacity:.75':''}"><div><h3>${esc(i.title)}</h3><p>${esc(i.body)}</p><p style="font-size:11px;color:var(--muted)">${i.kind} · ${i.scope}${i.ref_type?' · '+i.ref_type+' #'+i.ref_id:''}</p></div><div style="margin-top:8px">${i.is_read?'':`<button class="quiet" onclick="readInbox(${i.id})">Mark read</button>`}</div></article>`).join('')
+    : `<div class="empty-state">Inbox zero. Task offers, agent proposals and status updates land here — not in the broadcast.</div>`;
+  renderInboxBadge();
+}
+window.readInbox = async (id)=>{ await api(`/api/inbox/${id}/read`,{method:'POST',body:'{}'}); state.inbox = state.inbox.map(i=>i.id===id?{...i,is_read:true}:i); renderInbox(); };
+$('inboxFilterBtn').onclick = ()=>{ state.inboxFilter = state.inboxFilter==='all'?'personal':state.inboxFilter==='personal'?'public':'all'; $('inboxFilterBtn').textContent='Filter: '+state.inboxFilter; renderInbox(); };
+
+/* ---------- browser ---------- */
+async function loadExt(){ try{ state.ext = await api(`/api/groups/${state.groupId}/external-events`);}catch(e){state.ext=[];} }
+function renderExt(){
+  const g = $('extGrid'); if(!g) return;
+  g.innerHTML = state.ext.length ? state.ext.map(e=>`<article class="item-card"><div><h3>${esc(e.kind)} — ${esc(e.ref)}</h3><p style="font-size:12px">${esc(e.url||'')}</p></div><div class="item-foot"><span class="tag ${e.status==='confirmed'?'green':e.status==='failed'?'rose':'yellow'}">${esc(e.status)}</span></div><div style="display:flex;gap:6px;margin-top:8px"><button class="primary" onclick="reportExt(${e.id},'confirmed')">Confirm ✓</button><button class="quiet" onclick="reportExt(${e.id},'failed')">Fail</button></div></article>`).join('')
+    : `<div class="empty-state">No external actions. Open one (payment, booking, QR handoff) and report its status — confirmed statuses fire Flows.</div>`;
+}
+window.reportExt = async (id,st)=>{ await api(`/api/external-events/${id}/report`,{method:'POST',body:JSON.stringify({status:st,note:'reported from browser tab'})}); toast('Status: '+st); loadExt().then(renderExt); loadInbox(); loadMessages(true); };
+$('newExternalBtn').onclick = async ()=>{
+  const v = await ask('Open external action', [{label:'Kind',type:'select',options:['qr_handoff','payment','booking','form']},{label:'Label',hint:'e.g. Pickup QR — MMA2'},{label:'URL (optional)',hint:'https://…'}], 'Open');
+  if (!v) return;
+  const e = await api(`/api/groups/${state.groupId}/external-events`,{method:'POST',body:JSON.stringify({kind:v[0],ref_label:v[1]||'External action',url:v[2]})});
+  toast('Opened #'+e.id+' — Confirm it to trigger flows'); loadExt().then(renderExt);
+};
+
+/* ---------- members / invite ---------- */
+window.copyText = async (t)=>{
+  try { await navigator.clipboard.writeText(t); return true; }
+  catch(e){
+    const ta = document.createElement('textarea');
+    ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); return true; }
+    catch(_){ return false; } finally { ta.remove(); }
+  }
+};
+$('inviteBtn').onclick = async ()=>{
+  try {
+    const inv = await api(`/api/groups/${state.groupId}/invite`);
+    const link = `${location.origin}/?join=${inv.code}`;
+    const v = await ask(`Invite to ${inv.group||'group'}`, [{type:'info', html:`Share this link — anyone with it joins instantly:<br><code style="font-size:12px;word-break:break-all">${esc(link)}</code><br><br>Or give just the code:<br><strong style="font-size:22px;letter-spacing:2px">${esc(inv.code)}</strong>`}], 'Copy link');
+    if (v !== null){ (await copyText(link)) ? toast('Invite link copied') : toast('Copy failed — long-press the link'); }
+  } catch(e){ toast('Could not load invite: '+e.message); }
+};
+async function addMemberFlow(){
+  if (state.myRole!=='admin') return toast('Admins only');
+  const v = await ask('Add member by username', [{label:'Username',hint:'they must have registered'},{label:'Role',type:'select',options:['member','admin']}], 'Add');
+  if (!v||!v[0]) return;
+  try { await api(`/api/groups/${state.groupId}/members`,{method:'POST',body:JSON.stringify({username:v[0],role:v[1]})}); toast('Member added'); refreshAll(); }
+  catch(e){ toast(e.message); }
+}
+
+/* ---------- misc kept controls ---------- */
+$('openDataQuickBtn').addEventListener('click',()=>showView('data'));
+const vModal = $('verificationModal');
+$('closeFormModalBtn')?.addEventListener('click',()=>vModal.classList.remove('show'));
+$('cancelFormBtn')?.addEventListener('click',()=>vModal.classList.remove('show'));
+$('driverForm')?.addEventListener('submit',e=>{e.preventDefault();vModal.classList.remove('show');openFormModal();});
+const cmdModal = $('cmdModal');
+$('openCmdBtn').addEventListener('click',()=>{cmdModal.classList.add('show');$('cmdInput').focus();});
+$('cmdInput').addEventListener('input',e=>{
+  const q = e.target.value.toLowerCase();
+  document.querySelectorAll('.cmd-item').forEach(i=>{ i.style.display = i.textContent.toLowerCase().includes(q)?'flex':'none'; });
+});
+document.addEventListener('keydown',e=>{
+  if ((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){ e.preventDefault(); cmdModal.classList.toggle('show'); $('cmdInput').focus(); }
+  if (e.key==='Escape'){ cmdModal.classList.remove('show'); closeDetails(); closeModal(null); $('moreSheet').classList.remove('show'); hideSlash(); }
+});
+document.querySelectorAll('.cmd-item').forEach(i=>i.addEventListener('click',()=>{
+  cmdModal.classList.remove('show'); const a=i.dataset.cmd;
+  if(a==='view-chat')showView('chat'); else if(a==='view-data')showView('data');
+  else if(a==='add-member')addMemberFlow(); else if(a==='open-form')openFormModal();
+  else if(a==='toggle-theme')$('themeToggleBtn').click();
+}));
+
+async function refreshAll(){
+  const g = await api('/api/groups/'+state.groupId);
+  state.members = g.members; state.tables = g.tables;
+  await Promise.all([loadMessages(true),loadTables(),loadTasks(),loadForms(),loadViews(),loadAgents(),loadSchedules(),loadFlows(),loadRules(),loadInbox(true),loadExt(),loadDash()]);
+  renderAll();
+}
+
+setAuthMode('login');
+boot();
+
+</script>
+</body>
+</html>

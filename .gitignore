@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+platform.db
+.env
+*.out
+static/uploads/*
