@@ -3054,8 +3054,8 @@ const AI_HINTS = {
 function aiSummary(kind, s){
   const li = (k,v)=>`<div><span style="color:var(--muted)">${k}:</span> <strong>${esc(v??'—')}</strong></div>`;
   let h = '';
-  if (kind==='task') h = li('Title',s.title)+li('Details',s.description)+li('Payout',s.payout_text)+li('Tags',(s.audience_tags||[]).join(', '));
-  if (kind==='form') h = li('Title',s.title)+li('Fields',(s.fields||[]).map(f=>f.label).join(', '))+li('Multiple',s.allow_multiple?'yes':'once each');
+  if (kind==='task') h = li('Title',s.title)+li('Details',s.description)+li('Payout',s.payout_text)+li('Tags',(s.audience_tags||[]).join(', '))+li('Rule',s.rule_name||'none');
+  if (kind==='form') h = li('Title',s.title)+li('Writes to',s.table_key||'no table')+li('Fields',(s.fields||[]).map(f=>f.label).join(', '))+li('Multiple',s.allow_multiple?'yes':'once each');
   if (kind==='schedule') h = li('Name',s.name)+li('When',s.kind+' '+(s.time_of_day||s.interval_seconds||s.cron_expr||''))+li('Does',s.action);
   if (kind==='redirect') h = li('Name',s.name)+li('When',s.trigger_event)+li('Then',s.action)+li('Says',s.message);
   if (kind==='table') h = li('Name',s.name)+li('Columns',(s.columns||[]).map(c=>c.label).join(', '));

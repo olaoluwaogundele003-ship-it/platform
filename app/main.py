@@ -1103,8 +1103,11 @@ def ai_propose_endpoint(gid: int, body: dict, user: models.User = Depends(get_cu
     if kind not in AI_KINDS:
         raise HTTPException(400, f"kind must be one of {', '.join(AI_KINDS)}")
     tables = db.query(models.TableDef).filter_by(group_id=gid).all()
-    snap = "tables: " + ", ".join(f"{t.key}({','.join(c.get('name', '') for c in (t.columns or []))})" for t in tables)
-    spec, model, warnings = ai_propose(kind, body.get("prompt", ""), snap)
+    rules = db.query(models.Rule).filter_by(group_id=gid, status="confirmed").all()
+    snap = ("tables: " + ", ".join(f"{t.key}({','.join(c.get('name', '') for c in (t.columns or []))})" for t in tables)
+            + "; rules: " + ", ".join(r.name for r in rules))
+    spec, model, warnings = ai_propose(kind, body.get("prompt", ""), snap,
+                                       {"tables": [t.key for t in tables], "rules": [r.name for r in rules]})
     if not spec:
         raise HTTPException(400, (warnings or ["could not understand that — try being more specific"])[0])
     return {"kind": kind, "spec": spec, "model": model, "warnings": warnings}
@@ -1126,8 +1129,15 @@ def ai_apply_endpoint(gid: int, body: dict, user: models.User = Depends(get_curr
         if not title:
             raise HTTPException(400, "spec needs a title")
         tags = [str(x)[:32] for x in (spec.get("audience_tags") or []) if str(x).strip()][:5]
+        rule_id = None
+        rn = _clean_str(spec.get("rule_name"), 160)
+        if rn:
+            hit = next((r for r in db.query(models.Rule).filter_by(group_id=gid, status="confirmed").all()
+                        if r.name.lower() == rn.lower() or rn.lower() in r.name.lower()), None)
+            if hit:
+                rule_id = hit.id
         t = models.TaskDef(group_id=gid, title=title, description=_clean_str(spec.get("description"), 500),
-                           payout_text=_clean_str(spec.get("payout_text"), 60),
+                           payout_text=_clean_str(spec.get("payout_text"), 60), rule_id=rule_id,
                            audience={"tags": tags} if tags else {},
                            status="live", created_by=me.id)
         db.add(t)
@@ -1154,6 +1164,10 @@ def ai_apply_endpoint(gid: int, body: dict, user: models.User = Depends(get_curr
         table_id = spec.get("table_id")
         if table_id and not db.query(models.TableDef).filter_by(id=table_id, group_id=gid).first():
             table_id = None
+        if not table_id and spec.get("table_key"):
+            hit = db.query(models.TableDef).filter_by(group_id=gid, key=str(spec["table_key"])[:64]).first()
+            if hit:
+                table_id = hit.id
         rule_id = spec.get("rule_id")
         if rule_id and not db.query(models.Rule).filter_by(id=rule_id, group_id=gid).first():
             rule_id = None

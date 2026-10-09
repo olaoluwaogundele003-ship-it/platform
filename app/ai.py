@@ -237,11 +237,11 @@ def ai_chat_structured_suggest(message_text, schema_snapshot=""):
 
 
 GENERATE_SCHEMAS = {
-    "task": "Respond with ONLY JSON: {\"title\":string(required,<=120 chars),\"description\":string,\"payout_text\":string,\"audience_tags\":[string]}. Derive a short actionable title from the request; put details in description.",
-    "form": "Respond with ONLY JSON: {\"title\":string(required,<=120 chars),\"description\":string,\"fields\":[{\"name\":string snake_case,\"label\":string,\"type\":one of text|number|select,\"required\":bool,\"options\":[string] for select}],\"allow_multiple\":bool}. Turn each requested question into a field; max 8 fields.",
+    "task": "Respond with ONLY JSON: {\"title\":string(required,<=120 chars),\"description\":string,\"payout_text\":string,\"audience_tags\":[string role words like courier|sender|buyer],\"rule_name\":string(the one existing rule that should govern this, from context, or empty)}. Derive a SHORT title; never copy the whole request as the title.",
+    "form": "Respond with ONLY JSON: {\"title\":string(required,<=120 chars),\"description\":string,\"table_key\":string(which existing table key this writes to, from context, or empty for none), fields:[{\"name\":string snake_case,\"label\":string,\"type\":one of text|number|select,\"required\":bool,\"options\":[string] for select}],\"allow_multiple\":bool}. Turn each requested question into a field; max 8 fields.",
     "schedule": "Respond with ONLY JSON: {\"name\":string(required),\"kind\":one of once|interval|daily|weekly|cron,\"time_of_day\":string HH:MM for daily|weekly,\"interval_seconds\":int for interval,\"cron_expr\":string for cron,\"action\":one of inspect|match|follow_up|report|motivate|push_inbox|create_task|run_agent,\"note\":string}. Default kind daily 09:00 action report unless the request says otherwise.",
     "redirect": "Respond with ONLY JSON: {\"name\":string(required),\"trigger_event\":one of offer.accepted|task.accepted|task.completed|form.submitted|status.confirmed|schedule.fired|member.joined,\"action\":one of push_inbox|push_public|create_task|write_record|run_agent,\"message\":string(the text of the next step)}. Map accept/complete/submit/confirm/time/join words to the closest trigger.",
-    "table": "Respond with ONLY JSON: {\"name\":string(required),\"description\":string,\"columns\":[{\"name\":string snake_case,\"label\":string,\"type\":one of text|number|select}%(max 8 columns)].",
+    "table": "Respond with ONLY JSON: {\"name\":string(required, a short plural noun like Shipments, max 60 chars -- NEVER the whole request),\"description\":string,\"columns\":[{\"name\":string snake_case,\"label\":string,\"type\":one of text|number|select}%(max 8 columns)].",
 }
 
 GENERATE_ROLES = {"task": "compile", "form": "compile", "schedule": "plan", "redirect": "plan", "table": "plan"}
@@ -252,15 +252,28 @@ def _slug(s, maxlen=40):
     return (s or "field")[:maxlen]
 
 
-def local_propose(kind, prompt):
+def local_propose(kind, prompt, ctx=None):
+    ctx = ctx or {}
     t = (prompt or "").strip()
+    low = t.lower()
+    tables = ctx.get("tables") or []
+    rules = ctx.get("rules") or []
     if kind == "task":
         pay = ""
         m = re.search(r"(?:\$|₦)\s?(\d[\d,]*)", t) or re.search(r"(?:pays?|payout|fee)\s+(?:\$|₦)?\s?(\d[\d,]*)", t, re.I)
         if m:
             pay = "$" + m.group(1)
-        title = re.sub(r"^(task|create|add|post|make)\s+", "", t, flags=re.I).strip().split("\n")[0][:120] or "Untitled task"
-        return {"title": title, "description": t[:300], "payout_text": pay, "audience_tags": []}, []
+        title = re.split(r"[,;\n]", t, 1)[0]
+        title = re.sub(r"\b(pays?|payout|fee)\b.*$", "", title, flags=re.I)
+        title = re.sub(r"\b(only|for)\b.*$", "", title, flags=re.I)
+        title = re.sub(r"^(task|create|add|post|make)\s+", "", title, flags=re.I).strip()[:120] or "Untitled task"
+        tags = [w for w in ("courier", "sender", "buyer", "rider", "driver", "admin") if w in low]
+        rule_name = ""
+        for rn in rules:
+            if any(k in low for k in rn.lower().split()[:3] if len(k) > 3):
+                rule_name = rn
+                break
+        return {"title": title, "description": t[:300], "payout_text": pay, "audience_tags": tags, "rule_name": rule_name}, []
     if kind == "form":
         parts = [p.strip() for p in re.split(r"[,;\n]+", t) if p.strip()]
         title = parts[0][:120] if parts else "Untitled form"
@@ -271,14 +284,22 @@ def local_propose(kind, prompt):
                 title = head.strip()[:120]
             if tail.strip():
                 rest = [tail.strip()] + rest
-        qs = rest[:7] if rest else ["Answer"]
-        return {"title": title, "description": "", "fields": [{"name": _slug(q), "label": q[:60], "type": "text", "required": True} for q in qs], "allow_multiple": False}, []
+        qs = [re.split(r"\.\s+(?=[A-Z])", q)[0].strip() for q in rest[:7]] or ["Answer"]
+        qs = [q for q in qs if q] or ["Answer"]
+        tk = ""
+        for key in tables:
+            stem = key.split("_")[0]
+            if stem and stem in low:
+                tk = key
+                break
+        return {"title": title, "description": "", "table_key": tk,
+                "fields": [{"name": _slug(q), "label": q[:60], "type": "number" if re.search(r"(amount|qty|price|value|count|number|rating|votes|age|fee|cost|total)", q, re.I) else "text", "required": True} for q in qs],
+                "allow_multiple": False}, []
     if kind == "schedule":
-        low = t.lower()
         spec = {"name": t[:80] or "Scheduled job", "kind": "daily", "time_of_day": "09:00", "action": "report", "note": t[:200]}
         m = re.search(r"(\d{1,2}):(\d{2})", t)
         if m:
-            spec["time_of_day"] = f"{int(m.group(1)):02d}:{m.group(2)}"
+            spec["time_of_day"] = "%02d:%s" % (int(m.group(1)), m.group(2))
         m2 = re.search(r"every\s+(\d+)\s*(min|sec|hour)", low)
         if m2:
             spec["kind"] = "interval"
@@ -290,7 +311,6 @@ def local_propose(kind, prompt):
                 break
         return spec, []
     if kind == "redirect":
-        low = t.lower()
         trig = "task.completed"
         for key, ev in (("accept", "offer.accepted"), ("complet", "task.completed"), ("submit", "form.submitted"), ("confirm", "status.confirmed"), ("schedul", "schedule.fired"), ("join", "member.joined")):
             if key in low:
@@ -299,13 +319,25 @@ def local_propose(kind, prompt):
         return {"name": t[:80] or "Untitled flow", "trigger_event": trig, "action": "push_inbox", "message": t[:300]}, []
     if kind == "table":
         parts = [p.strip() for p in re.split(r"[,;\n]+", t) if p.strip()]
-        name = parts[0][:60] if parts else "Untitled table"
-        cols = [{"name": _slug(c), "label": c[:40], "type": "number" if re.search(r"(amount|qty|price|value|count|number|rating|votes)", c, re.I) else "text"} for c in parts[1:9]]
-        return {"name": name, "description": "", "columns": cols or [{"name": "title", "label": "Title", "type": "text"}]}, []
+        raw = parts[0] if parts else "Untitled table"
+        raw = re.sub(r"(?i)^(new|create|add|make|track|tracking|table|a|the)\s+", "", raw).strip()
+        name_part, _, col_part = raw.partition(" with ")
+        if not col_part:
+            name_part, _, col_part = raw.partition(" including ")
+        raw = re.split(r"[:\-–—]", name_part)[0].strip()
+        words = [w for w in re.sub(r"[^a-zA-Z0-9 ]", "", raw).split() if w.lower() not in ("with", "and", "for", "table", "track", "list", "record")]
+        name = " ".join(w.capitalize() for w in words[:3]) or "Untitled table"
+        name = name[:60]
+        rest = [p.strip() for seg in ((col_part + "," + ",".join(parts[1:])) if col_part else ",".join(parts[1:])).split(",") for p in re.split(r"\s+and\s+|;", seg) if p.strip()][:8]
+        cols = [{"name": _slug(c), "label": c[:40],
+                 "type": "number" if re.search(r"(amount|qty|price|value|count|number|rating|votes|age|fee|cost|total|balance|stake)", c, re.I) else "text"}
+                for c in rest]
+        return {"name": name, "description": "",
+                "columns": cols or [{"name": "title", "label": "Title", "type": "text"}]}, []
     return {}, ["unknown kind"]
 
 
-def ai_propose(kind, prompt, snapshot=""):
+def ai_propose(kind, prompt, snapshot="", ctx=None):
     if kind not in GENERATE_SCHEMAS:
         return {}, "local", ["unknown kind: %s" % kind]
     if not (prompt or "").strip():
@@ -322,6 +354,6 @@ def ai_propose(kind, prompt, snapshot=""):
             if isinstance(spec, dict) and spec:
                 return spec, AI_MODELS[GENERATE_ROLES[kind]], []
         except Exception as e:
-            return local_propose(kind, prompt)[0], "local-fallback", ["gemini parse issue: %s" % e]
-    spec, _ = local_propose(kind, prompt)
+            return local_propose(kind, prompt, ctx)[0], "local-fallback", ["gemini parse issue: %s" % e]
+    spec, _ = local_propose(kind, prompt, ctx)
     return spec, "local-deterministic", []
