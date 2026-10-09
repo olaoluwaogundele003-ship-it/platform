@@ -31,8 +31,8 @@ a group or join one with an invite code (`/?join=CODE` links work too).
 Config: AI is **Gemini only** via Google's OpenAI-compatible endpoint. Set
 `PLATFORM_AI_KEY` to a Gemini API key (Google AI Studio, free tier) and it
 just works — verified live: rule compilation, view planning, record Q&A and
-AI drafting all answer. Working free models: `gemini-3.5-flash-lite` for
-compile/plan/suggest (reliable JSON), `gemini-3.6-flash` for agent brains.
+AI drafting all answer. `gemini-3.5-flash-lite` for compile/plan/suggest (proven reliable JSON),
+`gemini-3.6-flash` for agent brains.
 Override with `PLATFORM_AI_MODEL` or per-role `PLATFORM_AI_MODEL_<COMPILE|
 BRAIN|PLAN|SUGGEST>`. Every call validates the model's output shape strictly
 (fences stripped, balanced-JSON extraction, op allowlists, value

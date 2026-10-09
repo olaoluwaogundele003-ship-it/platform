@@ -6,8 +6,8 @@ Google Gemini via its OpenAI-compatible endpoint for:
   - powering agents (search, match, analysis)
 
 Free-tier model picks (Oct 2026):
-  compile (strict rule JSON) .... gemini-3.6-flash      (best free instruction-following)
-  brain (agent matching) ........ gemini-3.6-flash      (reasoning + analysis)
+  compile (strict rule JSON) .... gemini-3.5-flash-lite (reliable JSON + normalization)
+  brain (agent matching) ........ gemini-3.6-flash      (reasoning; local fallback covers flakes)
   plan (view filter mapping) .... gemini-3.5-flash-lite (fastest, cheapest)
   suggest (chat hints) .......... gemini-3.5-flash-lite (tiny, high-frequency)
 
