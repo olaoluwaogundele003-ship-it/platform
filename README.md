@@ -28,11 +28,13 @@ a group or join one with an invite code (`/?join=CODE` links work too).
 - Admins own tables/rules/flows/schedules/agents; members chat, submit, accept,
   run agents and read every shared dashboard.
 
-Config: `PLATFORM_AI_KEY` (defaults to the supplied key), `PLATFORM_AI_BASE_URL`
-(tries OpenRouter then OpenAI, OpenAI-compatible `/chat/completions`),
-`PLATFORM_AI_MODEL` (default `openai/gpt-4o-mini`). If the key/network is
-unreachable the app falls back to a local deterministic compiler — the Rules tab
-badge shows `AI: <model>` or `AI: fallback`.
+Config: AI is **Gemini only** via Google's OpenAI-compatible endpoint. Set
+`PLATFORM_AI_KEY` to a Gemini API key (Google AI Studio, free tier). Free
+models per feature: rule compilation + agent brains → `gemini-3.8-flash`;
+view planning + chat hints → `gemini-3.5-flash-lite`. Override with
+`PLATFORM_AI_MODEL` (all) or `PLATFORM_AI_MODEL_COMPILE/_BRAIN/_PLAN/_SUGGEST`.
+With no key the app uses the deterministic local fallback — the Rules badge
+and `/api/ai-status` show which is active.
 
 ## What lives where
 
@@ -103,8 +105,9 @@ attached in one motion).
 
 ## Paced catch-up (phased messages)
 
-Group Info drawer → *Paced catch-up*: new messages arrive one at a time, gap
+On by default in every group: new messages arrive one at a time, gap
 settable up to 5s, with Pause and Skip-to-latest on the floating control.
+Opt out per group in Group Info → *Paced catch-up*.
 Try it in **Campus Clothes Exchange** (invite `9C057F`), seeded with a 27-message
 flood and paced ON for the owner. A 2-minute auto-pilot **Pulse** schedule
 lives in Crowd Lagos with an ON/OFF banner in Schedules.

@@ -1,59 +1,71 @@
-"""AI integration for Platform.
+"""AI integration for Platform — GEMINI ONLY.
 
-Uses the provided API key to call an OpenAI-compatible chat API for:
+Google Gemini via its OpenAI-compatible endpoint for:
   - compiling natural-language rules into deterministic checks
   - answering data queries / generating views
   - powering agents (search, match, analysis)
 
-Design: compile-once. The LLM proposes a structured rule; we store it,
+Free-tier model picks (Oct 2026):
+  compile (strict rule JSON) .... gemini-3.8-flash      (best free instruction-following)
+  brain (agent matching) ........ gemini-3.8-flash      (reasoning + analysis)
+  plan (view filter mapping) .... gemini-3.5-flash-lite (fastest, cheapest)
+  suggest (chat hints) .......... gemini-3.5-flash-lite (tiny, high-frequency)
+
+Design: compile-once. Gemini proposes a structured rule; we store it,
 show it back to the creator, and enforce ONLY the stored JSON afterwards.
-Every LLM call has a deterministic local fallback so the demo works offline
+Every call has a deterministic local fallback so the demo works offline
 or when the key/network is unavailable.
 
 Env:
-  PLATFORM_AI_KEY        (defaults to the key supplied by the user)
-  PLATFORM_AI_BASE_URL   (comma-separated candidates tried in order)
-  PLATFORM_AI_MODEL
+  PLATFORM_AI_KEY            (Gemini API key from Google AI Studio, free tier)
+  PLATFORM_AI_BASE_URL       (default: Google's OpenAI-compatible endpoint)
+  PLATFORM_AI_MODEL          (overrides every role below)
+  PLATFORM_AI_MODEL_COMPILE / _BRAIN / _PLAN / _SUGGEST
 """
 import json
 import os
 import urllib.request
 import urllib.error
 
-AI_KEY = os.environ.get("PLATFORM_AI_KEY", "YOUR_PLATFORM_AI_KEY")
-# Any OpenAI-compatible base works. Google's Gemini exposes one at
-# https://generativelanguage.googleapis.com/v1beta/openai — point
-# PLATFORM_AI_BASE_URL there with a Gemini API key + PLATFORM_AI_MODEL
-# (e.g. gemini-2.0-flash) and every AI feature uses Gemini instead.
+AI_KEY = os.environ.get("PLATFORM_AI_KEY", "")
+AI_MODELS = {
+    "compile": os.environ.get("PLATFORM_AI_MODEL_COMPILE", os.environ.get("PLATFORM_AI_MODEL", "gemini-3.8-flash")),
+    "brain": os.environ.get("PLATFORM_AI_MODEL_BRAIN", os.environ.get("PLATFORM_AI_MODEL", "gemini-3.8-flash")),
+    "plan": os.environ.get("PLATFORM_AI_MODEL_PLAN", os.environ.get("PLATFORM_AI_MODEL", "gemini-3.5-flash-lite")),
+    "suggest": os.environ.get("PLATFORM_AI_MODEL_SUGGEST", os.environ.get("PLATFORM_AI_MODEL", "gemini-3.5-flash-lite")),
+}
 BASE_CANDIDATES = [
     s.strip() for s in os.environ.get(
         "PLATFORM_AI_BASE_URL",
-        "https://openrouter.ai/api/v1,https://api.openai.com/v1,https://generativelanguage.googleapis.com/v1beta/openai",
+        "https://generativelanguage.googleapis.com/v1beta/openai",
     ).split(",") if s.strip()
 ]
-AI_MODEL = os.environ.get("PLATFORM_AI_MODEL", "openai/gpt-4o-mini")
+AI_MODEL = AI_MODELS["compile"]
 
 _last_error = ""
 
 
 def ai_status():
     return {
+        "provider": "gemini",
         "configured": bool(AI_KEY),
         "key_prefix": (AI_KEY[:5] + "..." + AI_KEY[-4:]) if AI_KEY else "",
+        "models": AI_MODELS,
         "model": AI_MODEL,
         "bases": BASE_CANDIDATES,
         "last_error": _last_error,
     }
 
 
-def _chat(messages, max_tokens=800, temperature=0.1, timeout=25):
-    """Try each base URL with OpenAI-compatible /chat/completions. Returns text or None."""
+def _chat(messages, role="compile", max_tokens=800, temperature=0.1, timeout=25):
+    """Gemini chat via its OpenAI-compatible endpoint. Returns text or None."""
     global _last_error
+    model = AI_MODELS.get(role, AI_MODEL)
     if not AI_KEY:
-        _last_error = "no key configured"
+        _last_error = "no Gemini key configured (PLATFORM_AI_KEY)"
         return None
     body = json.dumps({
-        "model": AI_MODEL,
+        "model": model,
         "messages": messages,
         "max_tokens": max_tokens,
         "temperature": temperature,
@@ -105,7 +117,7 @@ def ai_compile_rule(natural_language, schema_context=""):
     user = f"Rule: {natural_language}\nSchema context: {schema_context[:1500]}"
     text = _chat(
         [{"role": "system", "content": system}, {"role": "user", "content": user}],
-        max_tokens=600, temperature=0.0,
+        "compile", max_tokens=600, temperature=0.0,
     )
     if text:
         try:
@@ -116,7 +128,7 @@ def ai_compile_rule(natural_language, schema_context=""):
                     c.get("description", f"{c.get('field')} {c.get('op')} {c.get('value')}")
                     for c in compiled["checks"]
                 ) or natural_language
-                return {"checks": compiled["checks"], "needs_review": bool(compiled.get("needs_review", False))}, expl, AI_MODEL
+                return {"checks": compiled["checks"], "needs_review": bool(compiled.get("needs_review", False))}, expl, AI_MODELS["compile"]
         except Exception as e:
             global _last_error
             _last_error = f"parse: {e}"
@@ -134,12 +146,12 @@ def ai_plan_view(natural_language, tables_snapshot):
     text = _chat(
         [{"role": "system", "content": system},
          {"role": "user", "content": f"Request: {natural_language}\nTables: {tables_snapshot[:1800]}"}],
-        max_tokens=400, temperature=0.0,
+        "plan", max_tokens=400, temperature=0.0,
     )
     if text:
         try:
             start, end = text.find("{"), text.rfind("}")
-            return json.loads(text[start:end + 1]), AI_MODEL
+            return json.loads(text[start:end + 1]), AI_MODELS["plan"]
         except Exception:
             pass
     return None, "local"
@@ -159,14 +171,14 @@ def ai_agent_brain(kind, profile, context=""):
     text = _chat(
         [{"role": "system", "content": system},
          {"role": "user", "content": f"Agent kind: {kind}\nProfile: {json.dumps(profile)[:1200]}\nContext: {context[:1200]}"}],
-        max_tokens=700, temperature=0.4,
+        "brain", max_tokens=700, temperature=0.4,
     )
     if text:
         try:
             start, end = text.find("["), text.rfind("]")
             items = json.loads(text[start:end + 1])
             if isinstance(items, list) and items:
-                return items[:5], AI_MODEL
+                return items[:5], AI_MODELS["brain"]
         except Exception:
             pass
     return [], "local"
@@ -212,7 +224,7 @@ def ai_chat_structured_suggest(message_text, schema_snapshot=""):
     text = _chat(
         [{"role": "system", "content": system},
          {"role": "user", "content": f"Message: {message_text[:600]}\nSchema: {schema_snapshot[:1200]}"}],
-        max_tokens=300, temperature=0.0,
+        "suggest", max_tokens=300, temperature=0.0,
     )
     if text:
         try:

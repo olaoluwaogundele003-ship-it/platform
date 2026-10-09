@@ -2087,11 +2087,11 @@
       <span style="font-weight:400;text-transform:none;letter-spacing:0">phased messages</span>
     </div>
     <label style="display:flex;align-items:center;gap:8px;font-size:12px;margin:8px 0">
-      <input type="checkbox" id="phaseToggle" onchange="savePhase()"> Pace new messages for me
+      <input type="checkbox" id="phaseToggle" onchange="savePhase()"> Pace new messages for me (on by default)
     </label>
     <label style="display:block;font-size:12px;color:var(--ink-secondary)">Gap between messages: <strong id="phaseGapVal">1.5s</strong> (max 5s)</label>
     <input type="range" id="phaseGap" min="500" max="5000" step="500" value="1500" style="width:100%" onchange="savePhase()" oninput="document.getElementById('phaseGapVal').textContent=(this.value/1000).toFixed(1)+'s'">
-    <p style="font-size:11px;color:var(--muted);margin:6px 0 0">New here? Turn this on and the flood arrives one message at a time. Pause to observe, skip to jump live.</p>
+    <p style="font-size:11px;color:var(--muted);margin:6px 0 0">On for everyone by default: the flood arrives one message at a time. Pause to observe, skip to jump live — or switch it off above.</p>
   </div>
 
   <div class="detail-section">
@@ -2522,7 +2522,8 @@ state.phase = {queue:[], paused:false, enabled:false, gap:1500, timer:null, last
 function loadPhased(){
   const me = (state.members||[]).find(m=>m.id===state.memberId);
   const cfg = (me && me.prefs && me.prefs.phased) || {};
-  state.phase.enabled = !!cfg.enabled;
+  // paced catch-up is ON by default everywhere; members opt out per group
+  state.phase.enabled = cfg.enabled !== false;
   state.phase.gap = Math.min(5000, Math.max(500, +cfg.gap || 1500));
   renderPhaseSettings(); updatePhaseBar();
 }
