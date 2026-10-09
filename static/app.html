@@ -2515,10 +2515,20 @@ async function selectGroup(gid){
   markSeen();
 }
 function renderAll(){ renderChat(); loadReactions(); renderTasks(); renderForms(); renderViews(); renderAgents(); renderSchedules(); renderFlows(); renderRules(); renderInbox(); renderExt(); }
+function renderedMax(){
+  let mx = 0;
+  for (const m of state.msgs){ if (typeof m.id === 'number' && m.id > mx) mx = m.id; }
+  return mx;
+}
 function markSeen(){
-  if (!state.groupId || !state.lastMsgId) return;
+  // seen = newest message actually rendered, NOT newest known.
+  // Otherwise leaving mid-drip marks undripped messages seen and the
+  // pacer can never resume them on return.
+  if (!state.groupId) return;
+  const mx = renderedMax();
+  if (!mx) return;
   const seen = store.get('platform_seen',{});
-  if ((seen[state.groupId]||0) < state.lastMsgId){ seen[state.groupId] = state.lastMsgId; store.set('platform_seen', seen); }
+  if ((seen[state.groupId]||0) < mx){ seen[state.groupId] = mx; store.set('platform_seen', seen); }
 }
 async function loadDash(){ try{ state.dash = await api(`/api/groups/${state.groupId}/dashboard`);}catch(e){} }
 
@@ -2804,7 +2814,14 @@ async function loadMessages(silent, initial){
   ensurePill();
   stopPhaseDrip();
   const msgs = await api(`/api/groups/${state.groupId}/messages?limit=100`);
-  state.phase.queue = []; state.phase.paused = false;
+  if (initial){ state.phase.queue = []; state.phase.paused = false; }
+  else if (state.phase.enabled){
+    // a refresh mid-drip must not resurrect or duplicate paced messages
+    const ids = new Set(msgs.map(m=>m.id));
+    state.phase.queue = state.phase.queue.filter(q=>!ids.has(q.id));
+    if (!state.phase.queue.length) updatePhaseBar();
+    else startPhaseDrip();
+  }
   if (initial && state.phase.enabled){
     const seen = (store.get('platform_seen',{}))[state.groupId] || 0;
     const older = msgs.filter(m=>m.id <= seen);
